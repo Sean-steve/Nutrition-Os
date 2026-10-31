@@ -3,6 +3,7 @@
  * These demo-only records are never transmitted or stored.
  */
 import type { FoodChoice, GroceryItem, MealRecord } from '../domain/nutrition';
+import { extraSampleFoods } from './foodLibrary';
 
 export const SAMPLE_DATE = '2026-10-31';
 
@@ -19,6 +20,7 @@ export const sampleFoodChoices: FoodChoice[] = [
   { id: 'yoghurt', name: 'Plain yoghurt', serving: '1 cup', emoji: '🥛', energyKcal: 150, proteinG: 9, carbsG: 12, fatG: 8 },
   { id: 'ugali', name: 'Ugali & sukuma wiki', serving: '1 plate', emoji: '🥬', energyKcal: 340, proteinG: 9, carbsG: 62, fatG: 7 },
   { id: 'beans', name: 'Beans & avocado', serving: '1 bowl', emoji: '🫘', energyKcal: 420, proteinG: 18, carbsG: 51, fatG: 16 },
+  ...extraSampleFoods,
 ];
 
 export const sampleRecommendations = [
@@ -56,5 +58,8 @@ export const sampleRoadmap: Record<string, { phase: string; description: string;
   assistant: { phase: 'Phase 4', description: 'Policy-controlled conversational nutrition assistant.', highlights: ['Explainable responses', 'Permission-bound tools', 'Safety checks'] },
   integrations: { phase: 'Phase 7', description: 'Authorized communication with Personal Kernel engines.', highlights: ['Kernel identity', 'Finance/Fitness/Calendar signals', 'Consent-led contracts'] },
   privacy: { phase: 'Phase 7', description: 'User data sovereignty and consent controls.', highlights: ['Permission center', 'Data export & erasure', 'Audit trail'] },
+  onboarding: { phase: 'Phase 2', description: 'Three-step personal nutrition setup.', highlights: ['Personal preferences', 'Explicit example targets', 'No account created'] },
+  profile: { phase: 'Phase 2', description: 'Edit personal nutrition preferences.', highlights: ['Dietary choices', 'Display preferences', 'Privacy disclosure'] },
+  recipes: { phase: 'Phase 2', description: 'Reusable ingredient-based recipes.', highlights: ['Recipe creation & editing', 'Serving calculations', 'Consumption snapshots'] },
   settings: { phase: 'Phase 2+', description: 'Product settings and accessibility preferences.', highlights: ['Units & preferences', 'Notification controls', 'Profile configuration'] },
 };
