@@ -3,6 +3,7 @@ export type MealStatus = 'logged' | 'planned' | 'suggested';
 export type MealSlot = 'Breakfast' | 'Lunch' | 'Snack' | 'Dinner';
 export interface MealRecord {
   id: string;
+  planEntryId?: string; // link to approved plan, separate from consumption
   recordedOn?: string; // ISO date, preview-only; older fixtures belong to SAMPLE_DATE
   slot: MealSlot;
   name: string;
@@ -32,6 +33,7 @@ export interface GroceryItem {
   priceKes: number;
   emoji: string;
   purchased: boolean;
+  received?: boolean; // once received into inventory, not editable via dashboard checkoff
 }
 export interface NutritionTotals {
   energyKcal: number;

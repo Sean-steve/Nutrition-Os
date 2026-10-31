@@ -18,7 +18,12 @@
 - Frontend-only state; these operations are explicitly labeled as sample interactions and are not persisted.
 - See `PHASE_2_DELIVERY.md`.
 
-## Phase 3 onward
+## Phase 3 — interactive resource preview
+- Weekly plan draft, approved, locked, edited, and grocery generation from recipe requirements.
+- Inventory pantry/fridge/freezer ledger, grocery receipts, budget and waste/expiry tracking.
+- See `PHASE_3_DELIVERY.md`.
+
+## Phase 4 onward
 3. Meal planner, grocery, inventory, budgets, waste.
 4. Recommendations, AI experience, insights, family logistics.
 5. Real database/domain services/REST/events.
