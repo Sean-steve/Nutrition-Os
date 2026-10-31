@@ -1,0 +1,117 @@
+{
+  "schemaVersion": 1,
+  "product": "Nutrition OS",
+  "phase": "8",
+  "asOf": "2026-10-31",
+  "declaration": "Gate records are declarations, not self-certification. External services require independently reviewed evidence.",
+  "gates": {
+    "code_ci": {
+      "state": "pending",
+      "evidence": null,
+      "owner": "Engineering",
+      "reason": "Post-merge CI on final Phase 8 main required."
+    },
+    "postgres_migrations_rls": {
+      "state": "pending",
+      "evidence": null,
+      "owner": "Engineering",
+      "reason": "Final migration/RLS CI evidence required."
+    },
+    "security_tests": {
+      "state": "pending",
+      "evidence": null,
+      "owner": "Security",
+      "reason": "Independent penetration review outstanding."
+    },
+    "browser_accessibility": {
+      "state": "pending",
+      "evidence": null,
+      "owner": "QA",
+      "reason": "Browser CI plus independent WCAG audit required."
+    },
+    "backup_restore_drill": {
+      "state": "pending",
+      "evidence": null,
+      "owner": "SRE",
+      "reason": "Ephemeral CI drill planned; production drill separate."
+    },
+    "performance_baseline": {
+      "state": "pending",
+      "evidence": null,
+      "owner": "SRE",
+      "reason": "CI concurrency smoke not representative sustained production load."
+    },
+    "kernel_identity_provider": {
+      "state": "blocked",
+      "evidence": null,
+      "owner": "HOS",
+      "reason": "Real cross-service token exchange/JWKS not deployed."
+    },
+    "kernel_external_engine_install": {
+      "state": "blocked",
+      "evidence": null,
+      "owner": "HOS",
+      "reason": "External nutrition-os engine installation not proven in live HOS."
+    },
+    "kernel_event_mesh_delivery": {
+      "state": "blocked",
+      "evidence": null,
+      "owner": "HOS",
+      "reason": "No production HOS event ingress/outbox transport."
+    },
+    "family_authority": {
+      "state": "blocked",
+      "evidence": null,
+      "owner": "Family OS",
+      "reason": "Canonical Family membership provider not operational."
+    },
+    "nutrition_safety_review": {
+      "state": "blocked",
+      "evidence": null,
+      "owner": "Safety",
+      "reason": "Allergen/minor/clinical and food provenance review not certified."
+    },
+    "privacy_dpia": {
+      "state": "blocked",
+      "evidence": null,
+      "owner": "Privacy",
+      "reason": "DPIA, consent/retention/export/erasure review missing."
+    },
+    "production_infrastructure": {
+      "state": "blocked",
+      "evidence": null,
+      "owner": "SRE",
+      "reason": "No production API/DB/TLS/secrets/worker provisioned or verified."
+    },
+    "production_backup_pitr": {
+      "state": "blocked",
+      "evidence": null,
+      "owner": "SRE",
+      "reason": "Production PITR, encryption, retention and timed restore untested."
+    },
+    "monitoring_incident_response": {
+      "state": "blocked",
+      "evidence": null,
+      "owner": "SRE",
+      "reason": "No live SLO/alerts/oncall/incident-drill evidence."
+    },
+    "staging_e2e": {
+      "state": "blocked",
+      "evidence": null,
+      "owner": "QA",
+      "reason": "Multi-service staging not provisioned."
+    },
+    "operational_approval": {
+      "state": "blocked",
+      "evidence": null,
+      "owner": "Owner",
+      "reason": "No security/privacy/clinical/go-live signoff."
+    },
+    "pages_preview": {
+      "state": "blocked",
+      "evidence": null,
+      "owner": "Repository Owner",
+      "reason": "GitHub Pages settings require GitHub Actions source."
+    }
+  }
+}

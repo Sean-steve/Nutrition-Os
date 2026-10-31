@@ -57,3 +57,73 @@ jobs:
         run: npm --prefix server run build
       - name: PostgreSQL integration and RLS certification
         run: npm --prefix server run test:integration
+      - name: Runtime dependency vulnerability audit
+        run: |
+          npm audit --omit=dev --audit-level=high
+          npm --prefix server audit --omit=dev --audit-level=high
+      - name: Disposable backup and actual database restore drill
+        run: bash scripts/backup-restore-ci.sh
+      - name: Machine-readable release readiness gate (expected NOT READY)
+        run: node scripts/release-gate.mjs --expect-blocked --output release-gate.json
+      - name: Upload Phase 8 release evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: phase8-release-evidence
+          path: release-gate.json
+          if-no-files-found: ignore
+
+  browser:
+    name: Browser UX and accessibility certification (local API)
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_DB: nutrition_os
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: nutrition_dev_admin_2026
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d nutrition_os"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 15
+    env:
+      NODE_ENV: test
+      DATABASE_URL: postgresql://nutrition_app:nutrition_dev_only_2026@127.0.0.1:5432/nutrition_os
+      MIGRATION_DATABASE_URL: postgresql://postgres:nutrition_dev_admin_2026@127.0.0.1:5432/nutrition_os
+      ENABLE_DEV_DB_ROLE: "true"
+      DEV_DB_ROLE_PASSWORD: nutrition_dev_only_2026
+      LOCAL_IDENTITY_ENABLED: "true"
+      LOCAL_IDENTITY_SECRET: nutrition-test-local-signing-secret-not-for-production-2026
+      CORS_ORIGINS: http://localhost:5173
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install frontend and backend dependencies
+        run: |
+          npm install --no-audit --no-fund
+          npm --prefix server install --no-audit --no-fund
+      - name: Install Playwright browser and dependencies
+        run: npx playwright install --with-deps chromium
+      - name: Apply PostgreSQL migrations and restricted app role
+        run: npm --prefix server run db:migrate
+      - name: Issue short-lived local test-only token for browser suite
+        run: |
+          TOKEN="$(npm --prefix server run --silent dev:token)"
+          printf 'E2E_TEST_TOKEN=%s\n' "$TOKEN" >> "$GITHUB_ENV"
+      - name: Desktop and mobile browser E2E / WCAG scan
+        run: npm run test:e2e
+      - name: Upload browser failure evidence (test-only data)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: phase8-browser-evidence
+          path: |
+            playwright-report/
+            test-results/
+          if-no-files-found: ignore

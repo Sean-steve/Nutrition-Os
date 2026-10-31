@@ -7,3 +7,7 @@ coverage/
 !.env.example
 .DS_Store
 .vite/
+
+playwright-report/
+test-results/
+release-gate.json

@@ -53,12 +53,12 @@ export const moveInput=z.object({
 });
 export const profileInput=z.object({
   displayName:z.string().max(120).default(''),dietStyle:z.string().max(80).default('flexible'),
-  excludedFoods:z.string().max(1000).default(''),preferences:z.record(z.unknown()).default({}),
-  targets:z.record(z.number().finite().nonnegative().max(100000)).default({})
+  excludedFoods:z.string().max(1000).default(''),preferences:z.record(z.string(),z.unknown()).default({}),
+  targets:z.record(z.string(),z.number().finite().nonnegative().max(100000)).default({})
 }).strict();
 export const budgetInput=z.object({amountKes:z.number().finite().min(0).max(100000000)}).strict();
 export const groceryPrices=z.object({
-  planId:uuid,unitPricesKes:z.record(z.number().finite().min(0).max(1000000)).default({})
+  planId:uuid,unitPricesKes:z.record(z.string(),z.number().finite().min(0).max(1000000)).default({})
 }).strict();
 export const groceryPaid=z.object({
   purchased:z.boolean(),actualPaidKes:z.number().finite().nonnegative().max(100000000).nullable().default(null)

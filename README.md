@@ -11,7 +11,7 @@
 - **Phase 5:** Real PostgreSQL/Fastify backend with signed identity boundary, domain APIs, tenant RLS, transactions, idempotency, audit and outbox events. **Frontend is not yet connected to the backend.**
 - **Phase 6:** Signed-in React workspace connected to PostgreSQL REST APIs, with durable personal and resource workflows and explicit secure family kitchen sharing. The original mock is a **separate preview**, not fallback data.
 - **Phase 7 (engine boundary):** Verified Kernel-service JWT ingress, expiring signed authority/consent, governed projections, Family OS attestations and DOP proposals implemented. **Real HOS deployment, cross-service token exchange and Event Mesh delivery are not yet connected.**
-- **Phase 8:** Production security, browser/system certification, infrastructure and release assurance remain outstanding.
+- **Phase 8 (repository certification):** Production config hard-stops, API response privacy controls, release gates, PG backup+restore CI drill, concurrency/security tests and desktop/mobile browser+automated accessibility certification. **Full deployment, clinical/DPIA, HOS and external services remain production blockers.**
 
 ## Local run
 ```sh
@@ -82,3 +82,8 @@ The Nutrition backend now supports a distinct signed Kernel machine-service JWT 
 **The HOS-side live services are not deployed in this repository.** Until HOS provides its service JWKS, installed external engine registry adapter, authorized event ingress and user token exchange, no claims of live external integration are made. The original HOS internal Nutrition Engine still requires explicit migration/deprecation to avoid duplicate nutrition ownership.
 
 Configure KERNEL_BRIDGE_JWKS_URL, KERNEL_BRIDGE_ISSUER and KERNEL_BRIDGE_AUDIENCE together only when a genuinely trusted short-lived service signing authority is provisioned. Never use a dev token or browser-stored secret as an integration credential. See [Phase 7 architecture, security and blockers](docs/PHASE_7_KERNEL_INTEGRATION.md) and the [installable manifest target](docs/nutrition-os.hos-manifest.json).
+
+### Phase 8 — Full-System Production Certification & Release Readiness
+Engineering CI: React build/unit, Fastify/PostgreSQL migrations and RLS, signed Kernel contract tests, runtime dependency audit, concurrency/security smoke, ephemeral PostgreSQL backup + actual restore, desktop/mobile Chromium E2E and axe login accessibility check.
+See docs/PHASE_8_CERTIFICATION.md, docs/PHASE_8_OPERATIONS_RUNBOOK.md and docs/PHASE_8_RELEASE_EVIDENCE.json. Run node scripts/release-gate.mjs --require-ready to block production release if any mandatory evidence is missing.
+The current full-system verdict is **NOT READY FOR PRODUCTION**: identity federation, HOS Event Mesh, Family OS, safety/DPIA, actual deployment/backup/PITR/staging and operations signoff are not certified. GitHub Pages is a separate sample-only preview and not an API host.

@@ -77,10 +77,28 @@ export async function buildApp(opts:{pool:Pool;config:Config}){
   const {pool,config}=opts;
   const app=Fastify({logger:false,bodyLimit:1024*256,disableRequestLogging:true});
   await app.register(cors,{origin:config.corsOrigins.length?config.corsOrigins:false,credentials:false});
+  // API endpoints carry private responses and must never be cached or framed.
+  app.addHook('onSend',async (request,reply,payload)=>{
+    reply.header('Cache-Control','no-store, private');
+    reply.header('Pragma','no-cache');
+    reply.header('X-Content-Type-Options','nosniff');
+    reply.header('Referrer-Policy','no-referrer');
+    reply.header('X-Frame-Options','DENY');
+    reply.header('Content-Security-Policy',"default-src 'none'; frame-ancestors 'none'; base-uri 'none'");
+    reply.header('Permissions-Policy','camera=(), microphone=(), geolocation=()');
+    if(request.protocol==='https')reply.header('Strict-Transport-Security','max-age=31536000; includeSubDomains');
+    return payload;
+  });
   app.setErrorHandler((error,req,reply)=>{
     let status=500,code='INTERNAL_ERROR',message='An unexpected error occurred.';
     if(error instanceof ApiError){status=error.statusCode;code=error.code;message=error.message;}
     else if(error instanceof ZodError){status=422;code='VALIDATION_ERROR';message='Request validation failed.';}
+    else if(error!==null&&typeof error==='object'&&'statusCode' in error &&
+      [400,413,415,429].includes((error as {statusCode:number}).statusCode)){
+      status=(error as {statusCode:number}).statusCode;
+      code=status===413?'PAYLOAD_TOO_LARGE':status===429?'RATE_LIMITED':'MALFORMED_REQUEST';
+      message=status===413?'Request exceeds allowed size.':'The HTTP request was rejected.';
+    }
     else if(error!==null&&typeof error==='object'&&'code' in error){
       const pg=(error as {code?:string}).code;
       if(pg==='23505'){status=409;code='CONFLICT';message='This record already exists.';}
@@ -96,8 +114,20 @@ export async function buildApp(opts:{pool:Pool;config:Config}){
   });
   app.get('/health/live',async()=>({status:'alive',service:'nutrition-os-api'}));
   app.get('/health/ready',async(_req,reply)=>{
-    try{await pool.query('SELECT 1');return {status:'ready',database:true};}
-    catch{reply.code(503);return {status:'unavailable',database:false};}
+    try{
+      await pool.query('SELECT 1');
+      // No migration-role privileges are granted to the HTTP pool.
+      // Verify the schema signature with catalog lookups instead.
+      const schema=await pool.query("SELECT " +
+        "to_regclass('nutrition.profile') IS NOT NULL AS core,"+
+        "to_regclass('nutrition.hydration_day') IS NOT NULL AS live,"+
+        "to_regclass('nutrition.kernel_binding') IS NOT NULL AS kernel");
+      if(!schema.rows[0]?.core||!schema.rows[0]?.live||!schema.rows[0]?.kernel)
+        throw new Error('Required schema objects missing');
+      return {status:'ready',database:true,migrations:true};
+    }catch{
+      reply.code(503);return {status:'unavailable',database:false,migrations:false};
+    }
   });
   app.get(version+'/session',async req=>{
     const actor=actorOf(req);requireScope(actor,'nutrition:read');

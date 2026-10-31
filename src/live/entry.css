@@ -6,3 +6,18 @@
 .lv-preview-switch:hover{background:#0d6041}
 .lv-preview-switch span{font-size:13px}
 @media(max-width:780px){.lv-preview-switch{left:8px;bottom:8px;padding:10px;font-size:10px}}
+
+/* Phase 8 WCAG A/AA: signed-in entry content uses readable foregrounds. */
+.lv-login-card .lv-login-logo small,
+.lv-login-card > p,
+.lv-login-card .lv-login-actions > span,
+.lv-login-card .lv-note p,
+.lv-login-card .lv-field,
+.lv-login-card .lv-help {
+  color:#345b47;
+}
+.lv-login-card textarea::placeholder,
+.lv-login-card input::placeholder {
+  color:#486b55;
+  opacity:1;
+}
