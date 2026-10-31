@@ -176,3 +176,7 @@
 @media(max-width:780px){.lv-head{flex-direction:column;align-items:flex-start;padding:17px}.lv-head h1{font-size:23px}.lv-head-actions{width:100%}.lv-panel{padding:15px}.lv-panel-heading{align-items:flex-start;flex-direction:column}.lv-stats{grid-template-columns:repeat(2,minmax(0,1fr))}.lv-stat{min-height:85px;padding:12px;gap:9px}.lv-stat-icon{width:33px;height:33px}.lv-stat strong{font-size:16px}.lv-week-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.lv-form-grid{grid-template-columns:1fr}.lv-history-row{grid-template-columns:80px 1fr 65px;gap:7px}.lv-history-row small,.lv-history-row b{display:none}.lv-row{flex-wrap:wrap}.lv-row-actions{width:100%;justify-content:flex-end}.lv-grocery-side{flex:1;max-width:160px}.lv-chat-input{flex-direction:column}.lv-chat-turn{max-width:100%}.lv-house-selector{flex-direction:column;align-items:stretch}.lv-login-card{padding:20px}.lv-history-mini{flex-direction:column}.lv-grocery-line .lv-row-actions{width:100%}}
 @media(max-width:420px){.lv-stats{grid-template-columns:1fr}.lv-stat strong{font-size:18px}.lv-ingredient input{width:80px}.lv-week-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.lv-suggestions .outlined-button{flex:1}}
 @media(prefers-reduced-motion:reduce){.lv-spinner{animation:none}}
+
+/* Phase 8: stronger specificity than the asynchronously loaded live.css base;
+   12px text must meet >= 4.5:1 contrast even when chunk CSS order changes. */
+html body .lv-login-outer .lv-login-card > p { color:#345b47; }
