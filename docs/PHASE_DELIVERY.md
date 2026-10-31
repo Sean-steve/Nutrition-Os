@@ -4,7 +4,7 @@
 - [x] Inspect the target GitHub repository and confirm its actual baseline.
 - [x] Establish clean frontend source, types, package scripts, docs, CI, Pages workflow.
 - [x] Validate dependency install, TypeScript check, unit tests and production bundle in GitHub Actions (run 41174671644, passed).
-- [ ] Confirm Pages is enabled and publicly live (requires successful Pages run).
+- [ ] **DEPLOYMENT BLOCKER:** GitHub Pages is not enabled and the GitHub Actions token cannot create a site (403). Repository owner must select **Settings → Pages → Source: GitHub Actions** then rerun the Pages workflow. Build succeeds. See deployment issue.
 
 ## Phase 1 (this change)
 - Premium desktop and responsive application shell, visual tokens, typography.
