@@ -24,6 +24,7 @@ describe('nutrition intelligence preview',()=>{
   const exclusions={...ctx,profile:{...ctx.profile,excludedFoods:'peanuts'}};
   expect(previewCandidates(exclusions)).toHaveLength(0);
   expect(answerGuided(exclusions,'suggest dinner').message).toMatch(/not suggest/i);
+  expect(previewCandidates({...ctx,profile:{...ctx.profile,dietStyle:'vegan'}})).toHaveLength(0);
  });
  it('filters expired stock from availability explanations',()=>{
   const x={...ctx,asOf:'2026-11-10'};
@@ -44,7 +45,7 @@ describe('nutrition intelligence preview',()=>{
  });
  it('enforces family scope even for requests about personal logs',()=>{
   expect(answerGuided(ctx,'protein target','household').message).toMatch(/not another person/i);
-  expect(answerGuided(ctx,'family groceries','household').guardrail).toBe('general');
+  expect(answerGuided(ctx,'family groceries','household').guardrail).toBe('limited');
  });
  it('never writes state and gives no auto-action permissions',()=>{
   const before=JSON.stringify(ctx);

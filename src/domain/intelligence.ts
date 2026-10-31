@@ -60,7 +60,7 @@ export function eligibleStock(ctx:DecisionContext):Record<string,number>{
 export function previewCandidates(ctx:DecisionContext):Candidate[]{
   // A free-text exclusion cannot be reliably matched to ingredients or hidden allergens.
   // Fail closed on explicit exclusions: no supposedly compliant meal suggestions.
-  if(ctx.profile.excludedFoods.trim())return [];
+  if(ctx.profile.excludedFoods.trim() || ctx.profile.dietStyle!=='flexible')return [];
   const stock=eligibleStock(ctx);
   const result:Candidate[]=[];
   for(const recipe of ctx.recipes){
@@ -155,7 +155,7 @@ export interface GuidedReply {
   intent:AssistantIntent;title:string;message:string;route:string|null;
   evidence:Evidence[];guardrail:'general'|'sensitive'|'limited';
 }
-const sensitive=/\b(infant|newborn|baby|toddler|child|pregnan|breastfeed|postpartum|post.partum|diabetes|insulin|cancer|eating disorder|anorexia|bulimia|medication|kidney disease|allerg|anaphyla|severe|fasting|starve|purge|weight loss pill|laxative)\b/i;
+const sensitive=/\b(infant|newborn|bab(?:y|ies)|toddler|child(?:ren)?|pregnan\w*|breastfeed\w*|postpartum|post.partum|diabet\w*|insulin|cancer|eating disorder|anorexia|bulimia|medication\w*|kidney disease|allerg\w*|anaphyl\w*|severe|fasting|starve|purge|weight loss pill|laxative\w*)\b/i;
 export function classifyIntent(text:string):AssistantIntent{
   if(sensitive.test(text))return 'safety';
   if(/\b(protein|macro|nutrient|target)\b/i.test(text))return 'protein';
@@ -179,6 +179,11 @@ export function answerGuided(ctx:DecisionContext,text:string,scope:'personal'|'h
     route:null,evidence:[{kind:'rule',label:'Safety scope',detail:'Clinical, pediatric, allergy and disordered-eating requests do not generate meal or target prescriptions.'}],guardrail:'sensitive'};
   if(scope==='household' && ['protein','today','meals','explain'].includes(intent))
     return {intent,title:'Private information stays private',message:'This household view can discuss shared meals, groceries and inventory, not another person’s logged food, goals or nutrition status.',route:'family',evidence:[{kind:'rule',label:'Household data boundary',detail:'Personal intake and derived scores are not included in family context.'}],guardrail:'limited'};
+  if(scope==='household' && intent==='plan'){
+    const count=ctx.plans.filter(p=>p.status==='approved').reduce((sum,p)=>sum+p.entries.length,0);
+    return {intent,title:'Shared meal planning',message:count+' approved shared example meals are available for household coordination. No personal requirements or preferences are used in this household reply.',route:'family',
+      evidence:[{kind:'observation',label:'Shared plans',detail:count+' approved plan entries.'}],guardrail:'general'};
+  }
   const insights=deriveInsights(ctx);
   const observed=loggedOnDate(ctx);
   const values=observedEvidence(ctx);
@@ -190,7 +195,7 @@ export function answerGuided(ctx:DecisionContext,text:string,scope:'personal'|'h
   if(intent==='plan'){
     const recs=previewCandidates(ctx);
     return {intent,title:ctx.profile.excludedFoods.trim()?'Ingredient verification required':'Meal ideas, not instructions',
-      message:ctx.profile.excludedFoods.trim()?'The current profile lists food exclusions. Without authoritative ingredient and allergen screening, I will not suggest a supposedly compatible recipe. Review foods with a qualified professional when needed.':
+      message:ctx.profile.excludedFoods.trim() || ctx.profile.dietStyle!=='flexible'?'The current profile lists food exclusions or a restricted dietary pattern. Without authoritative ingredient and allergen screening, I will not suggest a supposedly compatible recipe. Review foods with a qualified professional when needed.':
       recs.length?'You can review '+recs.slice(0,2).map(r=>r.title).join(' or ')+' in the Recipe Studio and Meal Planner. Estimates use example records; check all ingredients and preparation safety.':'No valid recipe suggestions can be calculated from available example foods.',
       route:'planner',evidence:[{kind:'estimate',label:'Candidate source',detail:recs.length+' recipes with valid sample ingredients.'},{kind:'rule',label:'No auto actions',detail:'The assistant cannot create or approve plans.'}],guardrail:'limited'};
   }

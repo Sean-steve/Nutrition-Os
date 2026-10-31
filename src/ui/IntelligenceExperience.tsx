@@ -1,17 +1,16 @@
 import {useMemo,useState,type FormEvent,type ReactNode} from 'react';
 import {
-  Activity, AlertTriangle, ArrowRight, BarChart3, CalendarDays, Check,
-  ChevronDown, ChevronRight, CircleHelp, Clock, EyeOff, HeartHandshake,
-  Info, Leaf, LockKeyhole, MessageCircle, Plus, RotateCcw, Search, Send,
-  ShieldCheck, ShoppingBasket, Sparkles, Target, Trash2, TrendingUp,
+  Activity, AlertTriangle, ArrowRight, BarChart3, CalendarDays,
+  ChevronDown, ChevronRight, CircleHelp, EyeOff, HeartHandshake,
+  LockKeyhole, Plus, RotateCcw, Send,
+  ShieldCheck, ShoppingBasket, Sparkles, Target, Trash2,
   Users, Wallet, X, type LucideIcon,
 } from 'lucide-react';
 import type {DecisionContext,Evidence,GuidedReply,InsightFeedback,NutritionInsight,FeedbackStatus} from '../domain/intelligence';
-import {answerGuided,deriveInsights,loggedOnDate,observedDateCount,previewCandidates} from '../domain/intelligence';
-import {observedDays} from '../domain/personal';
-import type {FamilyWorkspaceState,HouseholdRole,KitchenTask,SharedMember,TaskStatus} from '../domain/family';
+import {answerGuided,deriveInsights,loggedOnDate,previewCandidates} from '../domain/intelligence';
+import {DEFAULT_PROFILE,DEFAULT_TARGETS,observedDays} from '../domain/personal';
+import type {FamilyWorkspaceState,HouseholdRole,TaskStatus} from '../domain/family';
 import {addMember,changeMember,familyProjection,memberRole,removeTask,saveTask,setPreferenceSharing} from '../domain/family';
-import type {WeeklyPlan} from '../domain/resources';
 import {daysUntil,lotBalance} from '../domain/resources';
 import './intelligence.css';
 
@@ -76,8 +75,8 @@ function InsightsPage({p}:{p:IntelligenceProps}){
       <label className="in-checkbox"><input type="checkbox" checked={includeDismissed} onChange={e=>setIncludeDismissed(e.target.checked)}/> Show dismissed insights</label>
     </Panel><div className="in-stack">
       <Panel title="Meal options to review" sub="Deterministic examples, not autonomous recommendations.">
-        {p.context.profile.excludedFoods.trim()?
-          <div className="in-warning"><AlertTriangle size={20}/><strong>Ingredient exclusions are set</strong><p>Recipe suggestions are withheld because this prototype cannot reliably verify hidden allergens or exclusions.</p><button className="outlined-button" type="button" onClick={()=>p.navigate('profile')}>Review preferences</button></div> :
+        {p.context.profile.excludedFoods.trim() || p.context.profile.dietStyle!=='flexible'?
+          <div className="in-warning"><AlertTriangle size={20}/><strong>Ingredient or dietary restrictions need verification</strong><p>Recipe suggestions are withheld because this prototype cannot reliably verify hidden allergens or exclusions.</p><button className="outlined-button" type="button" onClick={()=>p.navigate('profile')}>Review preferences</button></div> :
           candidates.length?<div className="in-candidates">{candidates.slice(0,4).map(r=><div className="in-candidate" key={r.id}><span>{r.emoji}</span><div><strong>{r.title}</strong><small>{Math.round(r.proteinG)}g protein · {money(r.costKes)} · {r.minutes} min</small><small>{r.availableIngredients}/{r.totalIngredients} ingredient(s) shown in eligible pantry stock</small><EvidenceDetails items={r.evidence}/></div></div>)}</div>:
           <div className="in-empty">No valid recipe options can be derived. Check your sample food records.</div>}
         <button className="outlined-button in-full" type="button" onClick={()=>p.navigate('planner')}>Review meal planner <ArrowRight size={15}/></button>
@@ -103,7 +102,8 @@ function AssistantPage({p}:{p:IntelligenceProps}){
   const intents=['read-only','local preview','no AI provider','no medical advice'];
   function ask(question:string){
     const trimmed=question.trim();if(!trimmed)return;
-    const reply=answerGuided(p.context,trimmed,scope);
+    const safeContext=scope==='household'?{...p.context,meals:[],profile:DEFAULT_PROFILE,targets:DEFAULT_TARGETS}:p.context;
+    const reply=answerGuided(safeContext,trimmed,scope);
     const stamp=Date.now()+'-'+Math.random().toString(36).slice(2,7);
     setHistory(old=>[...old,{id:stamp+'-u',role:'user',text:trimmed},{id:stamp+'-g',role:'guide',text:reply.message,reply}]);
     setInput('');

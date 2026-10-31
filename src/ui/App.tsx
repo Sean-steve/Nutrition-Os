@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState, type CSSProperties, type FormEvent } from
 import {
   Activity, Apple, ArrowRight, BarChart3, Bell, BookOpen, CalendarDays,
   Check, CheckCircle2, ChevronDown, ChevronLeft, ChevronRight, Clock,
-  Droplets, Flame, Heart, Home, Info, Leaf, LockKeyhole, Menu,
+  Droplets, Flame, Heart, Home, Info, Leaf, Menu,
   Package, Plus, Search, Send, Settings, ShieldCheck, ShoppingBasket,
   Sparkles, Target, TrendingUp, Users, Utensils, Wallet, AlertTriangle, X,
   type LucideIcon,
