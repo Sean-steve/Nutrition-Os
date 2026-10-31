@@ -93,6 +93,12 @@ export async function buildApp(opts:{pool:Pool;config:Config}){
     let status=500,code='INTERNAL_ERROR',message='An unexpected error occurred.';
     if(error instanceof ApiError){status=error.statusCode;code=error.code;message=error.message;}
     else if(error instanceof ZodError){status=422;code='VALIDATION_ERROR';message='Request validation failed.';}
+    else if(error!==null&&typeof error==='object'&&'statusCode' in error &&
+      [400,413,415,429].includes((error as {statusCode:number}).statusCode)){
+      status=(error as {statusCode:number}).statusCode;
+      code=status===413?'PAYLOAD_TOO_LARGE':status===429?'RATE_LIMITED':'MALFORMED_REQUEST';
+      message=status===413?'Request exceeds allowed size.':'The HTTP request was rejected.';
+    }
     else if(error!==null&&typeof error==='object'&&'code' in error){
       const pg=(error as {code?:string}).code;
       if(pg==='23505'){status=409;code='CONFLICT';message='This record already exists.';}
