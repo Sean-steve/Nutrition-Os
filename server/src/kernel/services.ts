@@ -56,11 +56,14 @@ export async function assertAuthority(db:SqlClient,a:BridgeActor,v:z.infer<typeo
    throw fail('STALE_KERNEL_AUTHORITY','Stale signed assertions cannot restore revoked consent.',409);
   if(old.assertion_id===v.assertionId)return {applied:false,duplicate:true,engineState:old.engine_state};
  }
- await db.query('INSERT INTO nutrition.kernel_binding(tenant_id,user_id,engine_state,assertion_id,asserted_at,lease_expires_at) '+
+ const installed=await db.query('INSERT INTO nutrition.kernel_binding(tenant_id,user_id,engine_state,assertion_id,asserted_at,lease_expires_at) '+
  'VALUES($1,$2,$3,$4,$5,$6) ON CONFLICT(tenant_id,user_id) DO UPDATE SET '+
  'engine_state=EXCLUDED.engine_state,assertion_id=EXCLUDED.assertion_id,asserted_at=EXCLUDED.asserted_at,'+
- 'lease_expires_at=EXCLUDED.lease_expires_at,updated_at=now()',
+ 'lease_expires_at=EXCLUDED.lease_expires_at,updated_at=now() '+
+ 'WHERE EXCLUDED.asserted_at>nutrition.kernel_binding.asserted_at RETURNING assertion_id',
  [...own(a),v.engineState,v.assertionId,v.assertedAt,v.expiresAt]);
+ if(!installed.rows.length)
+  throw fail('STALE_KERNEL_AUTHORITY','A newer or concurrent lifecycle assertion has already taken precedence.',409);
  await db.query('DELETE FROM nutrition.kernel_grant WHERE tenant_id=$1 AND user_id=$2',own(a));
  for(const g of v.grants){
   await db.query('INSERT INTO nutrition.kernel_grant(tenant_id,user_id,scope,granted,lease_expires_at,assertion_id) VALUES($1,$2,$3,$4,$5,$6)',
