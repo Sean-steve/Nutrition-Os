@@ -14,3 +14,6 @@ All state remains **in memory and sample-only**. No real identity, finance ledge
 
 ## Verification
 Run `npm install`, `npm run check`, `npm run test`, and `npm run build`. Browser/device QA and Pages publishing remain separate certification gates; do not claim they passed from compilation alone.
+
+## Purchase-history continuity
+Regenerating groceries is blocked while any checked purchase is unreceived. Received purchases from a replaced list are retained in an in-session archive for spending comparison; receiving a purchase twice is prevented. A received item's quantity and unit price cannot silently change, but manually recorded actual spending can be corrected. This is not a permanent financial ledger.

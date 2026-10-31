@@ -283,6 +283,7 @@ export default function App() {
   const [lots,setLots]=useState<InventoryLot[]>(sampleInventoryLots);
   const [stockMovements,setStockMovements]=useState<StockMovement[]>(sampleStockMovements);
   const [shoppingList,setShoppingList]=useState<GroceryList>(sampleGroceriesGenerated);
+  const [archivedLists,setArchivedLists]=useState<GroceryList[]>([]);
   const [foodBudget,setFoodBudget]=useState(sampleFoodBudgetKes);
   const [dayOffset,setDayOffset]=useState(0);
   const [search,setSearch]=useState('');
@@ -304,7 +305,12 @@ export default function App() {
   });
   const inventoryPreview=lots.map(l=>({id:l.id,name:sampleFoodChoices.find(f=>f.id===l.foodId)?.name??l.foodId,emoji:sampleFoodChoices.find(f=>f.id===l.foodId)?.emoji??'📦',quantity:lotBalance(l.id,stockMovements)})).filter(x=>x.quantity>0);
   const onSavePlan=(plan:WeeklyPlan)=>setPlans(prev=>prev.some(p=>p.id===plan.id)?prev.map(p=>p.id===plan.id?plan:p):[...prev,plan]);
-  const onGenerateGroceries=(plan:WeeklyPlan)=>setShoppingList(generateGroceries(plan,recipes,lots,stockMovements,sampleUnitPricesKes,activeDate));
+  const onGenerateGroceries=(plan:WeeklyPlan)=>{
+    if(shoppingList.lines.some(l=>l.purchased&&!l.received))throw new Error('Receive or uncheck purchased groceries before regenerating, so no pending stock receipt is lost.');
+    const generated=generateGroceries(plan,recipes,lots,stockMovements,sampleUnitPricesKes,activeDate);
+    if(shoppingList.lines.some(l=>l.purchased))setArchivedLists(prev=>[...prev,shoppingList]);
+    setShoppingList(generated);
+  };
   const onAddLot=(lot:InventoryLot,quantity:number)=>{
     if(lots.some(l=>l.id===lot.id)||!Number.isFinite(quantity)||quantity<=0||quantity>1000||!Number.isFinite(lot.unitPriceKes)||lot.unitPriceKes<0||lot.unitPriceKes>100000||!isoDate(lot.acquiredOn)||(lot.expiresOn&&!isoDate(lot.expiresOn)))throw new Error('Invalid stock lot, quantity or unit price.');
     const newLots=[...lots,lot];
@@ -371,7 +377,7 @@ export default function App() {
       </div></header>
       <main className="workspace"><div className="workspace-toolbar"><span className="preview-badge"><span className="preview-dot"/> SAMPLE DATA · INTERACTIVE PREVIEW</span><div className="toolbar-actions"><button className="utility-btn" type="button" disabled={dayOffset!==0} onClick={()=>{adjustWater(.25);setNotice({title:'Hydration updated',body:'Added 250 ml to the example day. This change is temporary.'});}}><Droplets size={16}/> +250 ml water</button><button className="primary-button toolbar-add" type="button" onClick={()=>setMealModal(true)}><Plus size={17}/> Log meal</button></div></div>
       {route==='dashboard' ? view==='personal'?<Dashboard meals={mealsOnDate(visibleMeals,activeDate,SAMPLE_DATE)} budget={foodBudget} inventoryPreview={inventoryPreview} waterL={dayOffset===0?waterL:0} waterObserved={dayOffset===0} displayName={profile.onboardingComplete?profile.displayName:""} targets={targets} groceries={dashboardGroceries} toggleGrocery={toggleGrocery} onAdd={()=>setMealModal(true)} onViewMeal={setSelectedMeal} onPlanDinner={planDinner} navigate={nav} notify={setNotice} isSampleDay={dayOffset===0 || mealsOnDate(visibleMeals,activeDate,SAMPLE_DATE).length>0} onReset={()=>setDayOffset(0)}/>:<FamilyOverview navigate={nav}/> :
-        personalRoutes.includes(route as PersonalRoute)?<PersonalExperience key={route} route={route as PersonalRoute} meals={visibleMeals} activeDate={activeDate} waterL={waterL} profile={profile} targets={targets} recipes={recipes} foods={sampleFoodChoices} navigate={nav} onOpenMealLogger={()=>setMealModal(true)} onViewMeal={setSelectedMeal} onAddMeal={addMeal} onEditMeal={editMeal} onDeleteMeal={removeMeal} onSaveProfile={setProfile} onSaveTargets={setTargets} onSaveRecipe={saveRecipe} onDeleteRecipe={id=>setRecipes(prev=>prev.filter(r=>r.id!==id))} onAdjustWater={adjustWater} onNotice={(title,body)=>setNotice({title,body})}/>:resourceRoutes.includes(route as ResourceRoute)?<ResourceExperience key={route} route={route as ResourceRoute} activeDate={activeDate} plans={plans} recipes={recipes} foods={sampleFoodChoices} priceBook={sampleUnitPricesKes} lots={lots} movements={stockMovements} list={shoppingList} budgetKes={foodBudget} onPlan={onSavePlan} onList={setShoppingList} onGenerate={onGenerateGroceries} onBudget={setFoodBudget} onAddLot={onAddLot} onRecord={onRecordMovement} onTransfer={onTransferStock} onReceive={onReceive} navigate={nav} notify={(title,body)=>setNotice({title,body})}/>:route==='family'?<FamilyOverview navigate={nav}/>:<ModulePreview route={route} navigate={nav}/>}
+        personalRoutes.includes(route as PersonalRoute)?<PersonalExperience key={route} route={route as PersonalRoute} meals={visibleMeals} activeDate={activeDate} waterL={waterL} profile={profile} targets={targets} recipes={recipes} foods={sampleFoodChoices} navigate={nav} onOpenMealLogger={()=>setMealModal(true)} onViewMeal={setSelectedMeal} onAddMeal={addMeal} onEditMeal={editMeal} onDeleteMeal={removeMeal} onSaveProfile={setProfile} onSaveTargets={setTargets} onSaveRecipe={saveRecipe} onDeleteRecipe={id=>setRecipes(prev=>prev.filter(r=>r.id!==id))} onAdjustWater={adjustWater} onNotice={(title,body)=>setNotice({title,body})}/>:resourceRoutes.includes(route as ResourceRoute)?<ResourceExperience key={route} route={route as ResourceRoute} activeDate={activeDate} plans={plans} recipes={recipes} foods={sampleFoodChoices} priceBook={sampleUnitPricesKes} lots={lots} movements={stockMovements} list={shoppingList} archivedLists={archivedLists} budgetKes={foodBudget} onPlan={onSavePlan} onList={setShoppingList} onGenerate={onGenerateGroceries} onBudget={setFoodBudget} onAddLot={onAddLot} onRecord={onRecordMovement} onTransfer={onTransferStock} onReceive={onReceive} navigate={nav} notify={(title,body)=>setNotice({title,body})}/>:route==='family'?<FamilyOverview navigate={nav}/>:<ModulePreview route={route} navigate={nav}/>}
       <footer className="page-footer">Nutrition OS · Phase 3 meal planning & resources preview <span>Sample values only · Not medical advice · No account data is used</span></footer>
       </main>
     </div>

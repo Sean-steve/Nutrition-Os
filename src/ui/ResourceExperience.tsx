@@ -26,6 +26,7 @@ export interface ResourceProps {
   lots:InventoryLot[];
   movements:StockMovement[];
   list:GroceryList;
+  archivedLists:GroceryList[];
   budgetKes:number;
   onPlan:(plan:WeeklyPlan)=>void;
   onList:(list:GroceryList)=>void;
@@ -168,13 +169,13 @@ function Groceries({p}:{p:ResourceProps}) {
   const [expiry,setExpiry]=useState('');
   const {issue,attempt,clear}=useIssue();
   const total=estimateGroceries(p.list);
-  const spent=recordedGrocerySpend(p.list);
+  const spent=recordedGrocerySpend(p.list)+p.archivedLists.reduce((sum,l)=>sum+recordedGrocerySpend(l),0);
   const checked=p.list.lines.filter(l=>l.purchased).length;
   const filtered=p.list.lines.filter(l=>(foodOf(p,l.foodId)?.name??l.foodId).toLowerCase().includes(query.toLowerCase()));
   const plan=p.plans.find(x=>x.weekStart===mondayOf(p.activeDate));
   const stale=Boolean(plan&&p.list.sourcePlanId===plan.id&&plan.revision!==p.list.sourceRevision);
   const stockStale=p.list.sourceStockEventCount!==null&&p.list.sourceStockEventCount!==p.movements.length;
-  function replace(line:ShoppingLine){if(line.received)throw new Error("This item was already received; its stock receipt cannot be silently rewritten.");if(!validateShoppingLine(line))throw new Error('Enter a positive quantity, nonnegative price, and valid actual cost.');p.onList({...p.list,lines:p.list.lines.map(l=>l.id===line.id?line:l)});}
+  function replace(line:ShoppingLine){const original=p.list.lines.find(l=>l.id===line.id);if(original?.received&&(original.quantityServings!==line.quantityServings||original.unitPriceKes!==line.unitPriceKes||original.purchased!==line.purchased))throw new Error("Received stock quantities and unit prices are locked; only the recorded paid amount may be corrected.");if(!validateShoppingLine(line))throw new Error('Enter a positive quantity, nonnegative price, and valid actual cost.');p.onList({...p.list,lines:p.list.lines.map(l=>l.id===line.id?line:l)});}
   function check(line:ShoppingLine){
     attempt(()=>{
       if(line.received)throw new Error('Already received into inventory. This purchase cannot be unchecked.');
@@ -189,7 +190,7 @@ function Groceries({p}:{p:ResourceProps}) {
   function generate(){
     attempt(()=>{
       if(!plan)throw new Error('No meal plan exists for the currently selected week.');
-      if(p.list.lines.length&& !window.confirm('Replace the existing list, including checkoffs and manually added items, with fresh approved-plan requirements?'))return;
+      if(p.list.lines.length&& !window.confirm('Replace current draft quantities and manual items with fresh plan requirements? Received purchases will be retained in spending history. Purchased items not received must be resolved first.'))return;
       p.onGenerate(plan);
       p.notify('Grocery list generated','Requirements were derived from approved recipes minus eligible example inventory.');
     });
@@ -198,7 +199,7 @@ function Groceries({p}:{p:ResourceProps}) {
     <div className="rs-stats"><Stat icon={ShoppingBasket} label="Basket forecast" value={price(total)} hint="Quantity × illustrative unit price"/><Stat icon={CheckCircle2} label="Checked off" value={checked+' / '+p.list.lines.length} hint="Not a financial transaction"/><Stat icon={Wallet} label="Recorded purchase amounts" value={price(spent)} hint="Only explicitly entered actuals"/><Stat icon={TrendingUp} label="Budget remaining after recorded" value={price(p.budgetKes-spent)} hint="Can be negative"/></div>
     {stale&&<div className="rs-warning"><AlertTriangle size={18}/>Plan changed after list generation. Review the approved plan and regenerate groceries to refresh requirements.</div>}
     {stockStale&&<div className="rs-warning"><AlertTriangle size={18}/>Inventory changed after grocery generation. Quantities may be outdated; regenerate after reviewing the current plan and existing purchases.</div>}
-    <SafetyNote>Purchase checkoffs do not automatically change pantry stock or count as spending. Enter an actual amount separately, then explicitly receive purchased food into inventory.</SafetyNote>
+    <SafetyNote>Checkoffs do not automatically change pantry stock or count as spending. Enter an actual amount and explicitly receive purchases. Regeneration archives received purchases so their recorded spending is retained.</SafetyNote>
     <Panel title="Shopping list" description={p.list.sourcePlanId?'From approved plan revision '+p.list.sourceRevision:'Manual or empty list'} action={<div className="rs-inline-actions"><label className="rs-search"><Search size={15}/><input aria-label="Search grocery items" value={query} onChange={e=>setQuery(e.target.value)} placeholder="Find an item…"/></label><button className="outlined-button" type="button" onClick={()=>{setManual(true);clear();}}>+ Manual item</button></div>}>
       <div className="rs-shopping-rows">{filtered.map(line=>{
         const food=foodOf(p,line.foodId);
@@ -207,7 +208,7 @@ function Groceries({p}:{p:ResourceProps}) {
           <span className="rs-food-icon">{food?.emoji??'🧺'}</span>
           <div className="rs-shopping-title"><strong>{food?.name??line.foodId}</strong><small>{qty(line.quantityServings)} × {food?.serving??'serving'} · {line.source==='plan'?'Plan requirement':'Manual'}</small><small>{line.source==='plan'?'Needed '+qty(line.neededServings)+', stock offset '+qty(line.stockOffsetServings)+' servings':'Custom shopping item'}</small></div>
           <div className="rs-shopping-money"><strong>{price(line.quantityServings*line.unitPriceKes)}</strong><small>{line.paidKes!==null?'Recorded amount: '+price(line.paidKes):line.purchased?'Checked · actual not recorded':'Estimated only'}</small></div>
-          <div className="rs-shopping-actions"><button className="outlined-button" disabled={line.received} type="button" aria-label={'Edit '+(food?.name??'item')} onClick={()=>{setEditor({...line});clear();}}><Edit3 size={15}/></button>
+          <div className="rs-shopping-actions"><button className="outlined-button" type="button" aria-label={'Edit '+(food?.name??'item')} onClick={()=>{setEditor({...line});clear();}}><Edit3 size={15}/></button>
           <button className="outlined-button" disabled={!line.purchased||line.received} type="button" onClick={()=>{setReceiving(line);setExpiry('');setLocation('Pantry');clear();}}>{line.received?'Received':'Receive'}</button>
           {line.source==='manual'&&<button type="button" className="outlined-button rs-danger" aria-label="Remove manual item" onClick={()=>p.onList({...p.list,lines:p.list.lines.filter(l=>l.id!==line.id)})}><Trash2 size={15}/></button>}
           </div>
@@ -223,8 +224,8 @@ function Groceries({p}:{p:ResourceProps}) {
       <Issue text={issue}/><div className="rs-form-actions"><button className="primary-button" type="submit">Add item</button><button className="outlined-button" type="button" onClick={()=>setManual(false)}>Cancel</button></div></form></Modal>}
     {editor&&<Modal title="Edit grocery item" onClose={()=>setEditor(null)}><form className="rs-form" onSubmit={e=>{e.preventDefault();attempt(()=>{replace(editor);setEditor(null);p.notify('Grocery item updated','Quantities and costs are local preview values.');});}}>
       <p><strong>{foodOf(p,editor.foodId)?.name}</strong> · {foodOf(p,editor.foodId)?.serving}</p>
-      <div className="rs-form-grid"><label>Quantity (servings)<input type="number" required min=".25" max="1000" step=".25" value={editor.quantityServings} onChange={e=>setEditor({...editor,quantityServings:Number(e.target.value)})}/></label>
-      <label>Unit price (KES)<input type="number" required min="0" max="100000" value={editor.unitPriceKes} onChange={e=>setEditor({...editor,unitPriceKes:Number(e.target.value)})}/></label></div>
+      <div className="rs-form-grid"><label>Quantity (servings)<input type="number" disabled={editor.received} required min=".25" max="1000" step=".25" value={editor.quantityServings} onChange={e=>setEditor({...editor,quantityServings:Number(e.target.value)})}/></label>
+      <label>Unit price (KES)<input type="number" disabled={editor.received} required min="0" max="100000" value={editor.unitPriceKes} onChange={e=>setEditor({...editor,unitPriceKes:Number(e.target.value)})}/></label></div>
       <label>Actual paid (KES) · optional<input disabled={!editor.purchased} type="number" min="0" max="1000000" placeholder="Not recorded" value={editor.paidKes??''} onChange={e=>setEditor({...editor,paidKes:e.target.value===''?null:Number(e.target.value)})}/></label>
       <SafetyNote>Actual spending only counts when the item is checked off AND an amount has been explicitly recorded. A purchase checkmark alone is not a receipt.</SafetyNote>
       <Issue text={issue}/><div className="rs-form-actions"><button className="primary-button" type="submit">Save changes</button><button className="outlined-button" type="button" onClick={()=>setEditor(null)}>Cancel</button></div></form></Modal>}
@@ -298,13 +299,13 @@ function Inventory({p}:{p:ResourceProps}) {
 
 function Budget({p}:{p:ResourceProps}) {
   const [editing,setEditing]=useState(false),[input,setInput]=useState(p.budgetKes),[error,setError]=useState('');
-  const forecast=estimateGroceries(p.list),spent=recordedGrocerySpend(p.list);
+  const forecast=estimateGroceries(p.list),spent=recordedGrocerySpend(p.list)+p.archivedLists.reduce((sum,l)=>sum+recordedGrocerySpend(l),0);
   const hasUnpriced=p.list.lines.some(l=>l.unitPriceKes===0);
   const remaining=p.budgetKes-spent,forecastDifference=p.budgetKes-forecast;
   function save(e:FormEvent<HTMLFormElement>){e.preventDefault();if(!Number.isFinite(input)||input<0||input>10000000){setError('Budget must be between KES 0 and KES 10,000,000.');return;}p.onBudget(input);setEditing(false);setError('');p.notify('Example food budget updated','Your changes are limited to this browser session.');}
   return <div className="rs-page"><ScreenHead icon={Wallet} tag="FOOD FINANCES" title="Every shilling has a purpose" description="Keep meal cost forecasts, grocery checkoffs and explicitly recorded purchase amounts distinct." action={<div className="rs-inline-actions"><button className="outlined-button" type="button" onClick={()=>p.navigate('groceries')}>Shopping list <ArrowRight size={14}/></button><button type="button" className="primary-button" onClick={()=>setEditing(true)}><Edit3 size={15}/>Edit budget</button></div>}/>
     <div className="rs-stats"><Stat icon={Wallet} label="Example allocation" value={price(p.budgetKes)} hint="Manual nutrition food budget"/><Stat icon={ShoppingBasket} label="Basket forecast" value={price(forecast)} hint="Estimated, not paid"/><Stat icon={CheckCircle2} label="Recorded purchases" value={price(spent)} hint="From explicit paid amounts"/><Stat icon={TrendingUp} label="Unspent allocation" value={price(remaining)} hint="Budget minus recorded purchases"/></div>
-    <SafetyNote>Nutrition OS does not own bank transactions. These values are manually entered examples; Finance OS integration and receipt reconciliation are future work. Items checked off without an actual amount are excluded from recorded spending.</SafetyNote>
+    <SafetyNote>Nutrition OS does not own bank transactions. These are manually entered example amounts, including archived received purchases. Finance OS reconciliation is future work. Checkoffs without an actual amount are excluded from recorded spending.</SafetyNote>
     {hasUnpriced&&<div className="rs-warning"><AlertTriangle size={17}/>One or more grocery items have a zero unit price. The forecast may be understated.</div>}
     <div className="rs-two-columns"><Panel title="Budget health" description="Compare projected basket and manual spending against your food allocation.">
       <div className="rs-budget-meter"><span className="rs-budget-meter-caption"><strong>{price(forecast)}</strong><small>of {price(p.budgetKes)} estimated</small></span><div className="rs-budget-track"><i style={{width:Math.min(100,p.budgetKes>0?forecast/p.budgetKes*100:forecast>0?100:0)+'%'}}/></div></div>
@@ -313,6 +314,7 @@ function Budget({p}:{p:ResourceProps}) {
     </Panel><Panel title="Shopping cost reconciliation" description="A grocery checkoff alone is not recognized as paid.">
       <div className="rs-cost-list">{p.list.lines.map(l=>{const food=foodOf(p,l.foodId);return <div key={l.id}><span>{food?.emoji} {food?.name??l.foodId}</span><span><strong>{price(l.quantityServings*l.unitPriceKes)}</strong><small>{l.paidKes!==null&&l.purchased?'Actual: '+price(l.paidKes):l.purchased?'Checked · actual unknown':'Not purchased'}</small></span></div>})}</div>
       {!p.list.lines.length&&<p className="rs-muted">Generate groceries to begin planning spending.</p>}
+      {p.archivedLists.length>0&&<><h3 className="rs-history-title">Archived received purchases</h3><div className="rs-cost-list">{p.archivedLists.flatMap(l=>l.lines.filter(line=>line.purchased)).map(line=><div key={line.id}><span>{foodOf(p,line.foodId)?.name??line.foodId}</span><span><strong>{line.paidKes!==null?price(line.paidKes):'Actual not entered'}</strong><small>Received · previous grocery list</small></span></div>)}</div></>}
       <button className="outlined-button" type="button" onClick={()=>p.navigate('groceries')}>Record purchases in groceries <ArrowRight size={15}/></button>
     </Panel></div>
     <Panel title="Resource decisions" description="Useful next steps based on the current sample numbers."><div className="rs-decision-grid"><div><ShoppingBasket size={22}/><strong>Review shopping quantities</strong><p>Change estimated units and compare prices.</p><button className="outlined-button" onClick={()=>p.navigate('groceries')} type="button">Groceries</button></div><div><Package size={22}/><strong>Check pantry first</strong><p>Subtract available food from planned recipe ingredients.</p><button className="outlined-button" onClick={()=>p.navigate('inventory')} type="button">Inventory</button></div><div><AlertTriangle size={22}/><strong>Reduce avoidable waste</strong><p>Review stock nearing expiration before buying more.</p><button className="outlined-button" onClick={()=>p.navigate('waste')} type="button">Waste & expiry</button></div></div></Panel>
