@@ -3,6 +3,7 @@ import ReactDOM from 'react-dom/client';
 import SampleApp from './ui/App';
 import LiveApp from './live/LiveApp';
 import './ui/styles.css';
+import './live/entry.css';
 
 function setMode(mode:'preview'|'live'){
   const url=new URL(window.location.href);
