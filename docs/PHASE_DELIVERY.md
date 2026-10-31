@@ -3,7 +3,7 @@
 ## Phase 0 (this change)
 - [x] Inspect the target GitHub repository and confirm its actual baseline.
 - [x] Establish clean frontend source, types, package scripts, docs, CI, Pages workflow.
-- [ ] Validate install, TS, tests, production bundle in GitHub Actions (tracked separately).
+- [x] Validate dependency install, TypeScript check, unit tests and production bundle in GitHub Actions (run 41174671644, passed).
 - [ ] Confirm Pages is enabled and publicly live (requires successful Pages run).
 
 ## Phase 1 (this change)
