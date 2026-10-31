@@ -57,6 +57,12 @@ jobs:
         run: npm --prefix server run build
       - name: PostgreSQL integration and RLS certification
         run: npm --prefix server run test:integration
+      - name: Staging configuration / identity fail-closed certification
+        run: |
+          node --test scripts/staging/*.test.mjs
+          node scripts/staging/certify.mjs --dry-run --expect-blocked --output phase8-1-offline-evidence.json
+      - name: Validate staging private networking and separate migrator Docker Compose
+        run: bash scripts/staging/compose-ci.sh
       - name: Runtime dependency vulnerability audit
         run: |
           npm audit --omit=dev --audit-level=high
@@ -70,7 +76,9 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: phase8-release-evidence
-          path: release-gate.json
+          path: |
+            release-gate.json
+            phase8-1-offline-evidence.json
           if-no-files-found: ignore
 
   browser:

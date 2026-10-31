@@ -1,0 +1,77 @@
+name: nutrition-os-staging
+# Isolated staging, NOT production. Reverse proxy TLS is provided by the host.
+# All sensitive values are injected through an operator-owned chmod 0600 env file.
+services:
+  postgres:
+    image: ${STAGING_POSTGRES_IMAGE:?pin a PostgreSQL 16 image by sha256 digest}
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: nutrition_os_staging
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ${STAGING_POSTGRES_PASSWORD:?mandatory}
+      STAGING_APP_DB_PASSWORD: ${STAGING_APP_DB_PASSWORD:?mandatory}
+    volumes:
+      - nutrition_staging_pg:/var/lib/postgresql/data
+      - ./init-app-role.sh:/docker-entrypoint-initdb.d/10-init-app-role.sh:ro
+    networks: [private_data]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d nutrition_os_staging"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+    # Intentionally no published database ports.
+  migration:
+    profiles: [migration]
+    image: ${NUTRITION_STAGING_IMAGE:?pin the built API image by sha256 digest}
+    environment:
+      NODE_ENV: production
+      MIGRATION_DATABASE_URL: ${STAGING_MIGRATION_DATABASE_URL:?mandatory}
+    command: ["node", "dist/migrate.js"]
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks: [private_data]
+    read_only: true
+    tmpfs: [/tmp]
+    security_opt: ["no-new-privileges:true"]
+    cap_drop: [ALL]
+  api:
+    image: ${NUTRITION_STAGING_IMAGE:?pin the built API image by sha256 digest}
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      HOST: 0.0.0.0
+      API_PORT: "3001"
+      DATABASE_URL: ${STAGING_APP_DATABASE_URL:?mandatory}
+      LOCAL_IDENTITY_ENABLED: "false"
+      KERNEL_JWKS_URL: ${KERNEL_JWKS_URL:?HTTPS user JWKS mandatory}
+      KERNEL_ISSUER: ${KERNEL_ISSUER:?issuer mandatory}
+      KERNEL_AUDIENCE: ${KERNEL_AUDIENCE:?audience mandatory}
+      KERNEL_BRIDGE_JWKS_URL: ${KERNEL_BRIDGE_JWKS_URL:?HTTPS bridge JWKS mandatory}
+      KERNEL_BRIDGE_ISSUER: ${KERNEL_BRIDGE_ISSUER:?bridge issuer mandatory}
+      KERNEL_BRIDGE_AUDIENCE: ${KERNEL_BRIDGE_AUDIENCE:?bridge audience mandatory}
+      KERNEL_FAMILY_AUTHORITY_REQUIRED: "true"
+      CORS_ORIGINS: ${STAGING_WEB_ORIGIN:?HTTPS origin mandatory}
+    ports:
+      - "127.0.0.1:${STAGING_BIND_PORT:-3001}:3001"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks: [private_data, outgoing_https]
+    user: "10001:10001"
+    read_only: true
+    tmpfs: [/tmp]
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3001/health/ready').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 15s
+      timeout: 5s
+      retries: 10
+volumes:
+  nutrition_staging_pg:
+networks:
+  private_data:
+    internal: true
+  outgoing_https:
+    internal: false

@@ -87,3 +87,8 @@ Configure KERNEL_BRIDGE_JWKS_URL, KERNEL_BRIDGE_ISSUER and KERNEL_BRIDGE_AUDIENC
 Engineering CI: React build/unit, Fastify/PostgreSQL migrations and RLS, signed Kernel contract tests, runtime dependency audit, concurrency/security smoke, ephemeral PostgreSQL backup + actual restore, desktop/mobile Chromium E2E and axe login accessibility check.
 See docs/PHASE_8_CERTIFICATION.md, docs/PHASE_8_OPERATIONS_RUNBOOK.md and docs/PHASE_8_RELEASE_EVIDENCE.json. Run node scripts/release-gate.mjs --require-ready to block production release if any mandatory evidence is missing.
 The current full-system verdict is **NOT READY FOR PRODUCTION**: identity federation, HOS Event Mesh, Family OS, safety/DPIA, actual deployment/backup/PITR/staging and operations signoff are not certified. GitHub Pages is a separate sample-only preview and not an API host.
+
+### Phase 8.1 — Staging activation and production blocker closure
+The Phase 8 baseline has passing CI and a deployed **sample-only** GitHub Pages preview. Phase 8.1 adds `infra/staging/` isolated PostgreSQL/API deployment templates, separate migration role/grants, digest-pinned image preflight, dedicated GitHub protected-environment staging API workflow and synthetic-account certification with **no silent credential/sample-data fallback**.
+
+A dedicated staging host, HOS-issued identity and actual bidirectional Event Mesh, Family OS authority, clinical/privacy signoffs, production backup/PITR and operations approvals are **not yet provisioned**. No production-release approval is inferred from passing CI or sample Pages. `docs/PHASE_8_1_STAGING.md` documents the exact external dependencies and operator activation steps.
