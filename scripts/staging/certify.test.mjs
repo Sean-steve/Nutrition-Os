@@ -97,3 +97,33 @@ test('real technical gates can pass while independent release approval stays blo
  assert.equal(r.gates.operator_approval.state,'blocked');
  assert.ok(!JSON.stringify(r).includes(token));
 });
+
+test('operator write checkbox cannot override an unexpected signed test user or tenant',async()=>{
+ let writes=0;
+ const token='test-bound-subject';
+ globalThis.fetch=async(url,options={})=>{
+  const p=new URL(String(url)).pathname,auth=options.headers?.Authorization;
+  if(options.method==='POST'||options.method==='DELETE')writes++;
+  let status=200,body={};
+  if(p==='/health/ready')body={status:'ready',database:true,migrations:true};
+  if(p==='/api/v1/nutrition/session'){
+   if(auth!=='Bearer '+token)status=401;
+   else body={data:{userId:'11111111-1111-4111-8111-111111111111',
+    tenantId:'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',scopes:['nutrition:read','nutrition:write'],
+    identitySource:'kernel_verified_jwks'}};
+  }
+  if(p==='/api/v1/nutrition/kernel/status')body={data:{bridgeConfigured:true,active:true}};
+  return new Response(JSON.stringify(body),{status,headers:{'cache-control':'no-store'}});
+ };
+ const report=await certifyStaging({
+  NUTRITION_STAGING_WEB_URL:'https://nutrition-stage.example.net',
+  NUTRITION_STAGING_API_URL:'https://api.nutrition-stage.example.net',
+  NUTRITION_STAGING_TEST_USER_TOKEN:token,
+  NUTRITION_STAGING_SYNTHETIC_ACCOUNT:'true',
+  NUTRITION_STAGING_ALLOW_MUTATION:'true',
+  NUTRITION_STAGING_TEST_USER_ID:'22222222-2222-4222-8222-222222222222',
+  NUTRITION_STAGING_TEST_TENANT_ID:'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa'
+ });
+ assert.equal(report.gates.synthetic_write_idempotency.state,'blocked');
+ assert.equal(writes,0);
+});
