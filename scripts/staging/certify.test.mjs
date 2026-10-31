@@ -87,6 +87,8 @@ test('real technical gates can pass while independent release approval stays blo
   NUTRITION_STAGING_API_URL:'https://api.nutrition.example.net',
   NUTRITION_STAGING_TEST_USER_TOKEN:token,
   NUTRITION_STAGING_SYNTHETIC_ACCOUNT:'true',
+  NUTRITION_STAGING_TEST_USER_ID:'11111111-1111-4111-8111-111111111111',
+  NUTRITION_STAGING_TEST_TENANT_ID:'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
   NUTRITION_STAGING_ALLOW_MUTATION:'true'
  });
  assert.equal(r.technicalStaging,'BASIC_API_CERTIFIED');
