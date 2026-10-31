@@ -68,3 +68,6 @@ GitHub Actions provisions PostgreSQL 16, migrates using privileged connection, g
 
 ## Explicit follow-up
 Phase 6: frontend adapter contracts, real login flow, backend persistence integration, cross-module UX and family shared resource authority. Phase 7: Kernel OIDC/JWKS + consent/household permissions and genuine event transport. Phase 8: full safety, load, threat-model, disaster recovery and production certification. GitHub Pages remains a static frontend; it does **not** host this Node/PostgreSQL API.
+
+### Additional database isolation hardening
+Migration 003 adds composite (tenant_id,user_id,id) foreign-key constraints so a child row cannot refer to another actor's food, recipe, plan, meal or stock lot even if a future service omits a check. CI verifies cross-owner FK rejection and the local leased event-outbox dispatch/ack flow.

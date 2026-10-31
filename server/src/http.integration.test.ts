@@ -6,6 +6,7 @@ import {buildApp} from './http.js';
 import {loadConfig} from './config.js';
 import {signLocalToken} from './auth.js';
 import {assertNoBypassRls,scopedTransaction} from './db.js';
+import {deliverLocalBatch} from './eventsWorker.js';
 const url=process.env.DATABASE_URL;
 const secret='test-local-nutrition-identity-secret-long-enough-123456';
 const config=loadConfig({...process.env,NODE_ENV:'test',DATABASE_URL:url??'postgresql://localhost/no_database',
@@ -52,6 +53,9 @@ describe('versioned nutrition API backed by PostgreSQL and tenant RLS',()=>{
     const out=await scopedTransaction(pool,{userId:userTwo,tenantId,scopes:new Set(['nutrition:read'])},async db=>
       (await db.query('SELECT count(*)::int AS count FROM nutrition.food WHERE id=$1',[foodId])).rows[0].count);
     expect(out).toBe(0);
+    await expect(scopedTransaction(pool,{userId:userTwo,tenantId,scopes:new Set(['nutrition:write'])},
+      db=>db.query('INSERT INTO nutrition.inventory_lot(tenant_id,user_id,food_id,location,acquired_on,unit_cost_kes) VALUES($1,$2,$3,$4,$5,$6)',
+        [tenantId,userTwo,foodId,'Pantry','2026-10-31',0]))).rejects.toMatchObject({code:'23503'});
   });
   it('creates owned recipe, plans independently of observed consumption',async()=>{
     const recipe=await call('POST','/recipes',{name:'Example rice bowl',yieldServings:2,ingredients:[{foodId,servings:2}],prepMinutes:15},key());
@@ -114,6 +118,10 @@ describe('versioned nutrition API backed by PostgreSQL and tenant RLS',()=>{
       expect(payloads).not.toMatch(/Corrected rice log|Rice observed|excludedFoods|medical/);
       const n=e.rows.filter(x=>x.event_type==='nutrition.food.created');
       expect(n.length).toBe(1);
+      const dispatched=await deliverLocalBatch(privileged);
+      expect(dispatched).toBeGreaterThan(0);
+      const published=await privileged.query("SELECT count(*)::int AS count FROM nutrition.event_outbox WHERE tenant_id=$1 AND user_id=$2 AND state='published'",[tenantId,userId]);
+      expect(published.rows[0].count).toBeGreaterThan(0);
     }finally{await privileged.end();}
   });
 });
