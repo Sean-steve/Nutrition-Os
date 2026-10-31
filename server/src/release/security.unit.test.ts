@@ -8,7 +8,6 @@ const local={
 const production={
  NODE_ENV:'production',
  DATABASE_URL:'postgresql://nutrition_runtime:runtime_secret@db.internal:5432/nutrition_os',
- MIGRATION_DATABASE_URL:'postgresql://nutrition_migrator:migrate_secret@db.internal:5432/nutrition_os',
  LOCAL_IDENTITY_ENABLED:'false',
  KERNEL_JWKS_URL:'https://kernel.example.com/.well-known/jwks.json',
  KERNEL_ISSUER:'https://kernel.example.com/user',
@@ -29,11 +28,11 @@ describe('Phase 8 production config fail-closed checks',()=>{
  it('blocks local passwords, unsecured origins and identical DB roles',()=>{
    const cfg=loadConfig({...production,
      DATABASE_URL:'postgresql://nutrition_app:nutrition_dev_only@localhost:5432/nutrition_os',
-     MIGRATION_DATABASE_URL:'postgresql://nutrition_app:nutrition_dev_only@localhost:5432/nutrition_os',
+     MIGRATION_DATABASE_URL:'postgresql://nutrition_migrator:migrate_secret@db.internal:5432/nutrition_os',
      CORS_ORIGINS:'http://localhost:5173'
    });
    expect(productionConfigBlockers(cfg)).toEqual(expect.arrayContaining([
-     expect.stringMatching(/HTTP pool and privileged migration/),
+     expect.stringMatching(/separate privileged migration/),
      expect.stringMatching(/HTTPS-only CORS/),
      expect.stringMatching(/local development examples/)
    ]));
