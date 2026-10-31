@@ -173,6 +173,7 @@ function Groceries({p}:{p:ResourceProps}) {
   const filtered=p.list.lines.filter(l=>(foodOf(p,l.foodId)?.name??l.foodId).toLowerCase().includes(query.toLowerCase()));
   const plan=p.plans.find(x=>x.weekStart===mondayOf(p.activeDate));
   const stale=Boolean(plan&&p.list.sourcePlanId===plan.id&&plan.revision!==p.list.sourceRevision);
+  const stockStale=p.list.sourceStockEventCount!==null&&p.list.sourceStockEventCount!==p.movements.length;
   function replace(line:ShoppingLine){if(line.received)throw new Error("This item was already received; its stock receipt cannot be silently rewritten.");if(!validateShoppingLine(line))throw new Error('Enter a positive quantity, nonnegative price, and valid actual cost.');p.onList({...p.list,lines:p.list.lines.map(l=>l.id===line.id?line:l)});}
   function check(line:ShoppingLine){
     attempt(()=>{
@@ -196,6 +197,7 @@ function Groceries({p}:{p:ResourceProps}) {
   return <div className="rs-page"><ScreenHead icon={ShoppingBasket} tag="GROCERY WORKSPACE" title="Shop with a plan" description="Consolidated ingredient requirements, editable quantities and transparent costs in Kenyan shillings." action={<div className="rs-inline-actions"><button className="outlined-button" type="button" onClick={()=>p.navigate('planner')}>Meal planner</button><button className="primary-button" type="button" onClick={generate}><RefreshCw size={15}/>Generate from plan</button></div>}/>
     <div className="rs-stats"><Stat icon={ShoppingBasket} label="Basket forecast" value={price(total)} hint="Quantity × illustrative unit price"/><Stat icon={CheckCircle2} label="Checked off" value={checked+' / '+p.list.lines.length} hint="Not a financial transaction"/><Stat icon={Wallet} label="Recorded purchase amounts" value={price(spent)} hint="Only explicitly entered actuals"/><Stat icon={TrendingUp} label="Budget remaining after recorded" value={price(p.budgetKes-spent)} hint="Can be negative"/></div>
     {stale&&<div className="rs-warning"><AlertTriangle size={18}/>Plan changed after list generation. Review the approved plan and regenerate groceries to refresh requirements.</div>}
+    {stockStale&&<div className="rs-warning"><AlertTriangle size={18}/>Inventory changed after grocery generation. Quantities may be outdated; regenerate after reviewing the current plan and existing purchases.</div>}
     <SafetyNote>Purchase checkoffs do not automatically change pantry stock or count as spending. Enter an actual amount separately, then explicitly receive purchased food into inventory.</SafetyNote>
     <Panel title="Shopping list" description={p.list.sourcePlanId?'From approved plan revision '+p.list.sourceRevision:'Manual or empty list'} action={<div className="rs-inline-actions"><label className="rs-search"><Search size={15}/><input aria-label="Search grocery items" value={query} onChange={e=>setQuery(e.target.value)} placeholder="Find an item…"/></label><button className="outlined-button" type="button" onClick={()=>{setManual(true);clear();}}>+ Manual item</button></div>}>
       <div className="rs-shopping-rows">{filtered.map(line=>{

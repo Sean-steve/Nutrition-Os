@@ -53,6 +53,7 @@ describe('phase 3 resource contracts',()=>{
     expect(list.lines[0].stockOffsetServings).toBe(3);
     expect(list.lines[0].quantityServings).toBe(3);
     expect(estimateGroceries(list)).toBe(240);
+    expect(list.sourceStockEventCount).toBe(1);
     expect(recordedGrocerySpend(list)).toBe(0);
     const purchased:ShoppingLine={...list.lines[0],purchased:true,paidKes:255};
     expect(recordedGrocerySpend({...list,lines:[purchased]})).toBe(255);

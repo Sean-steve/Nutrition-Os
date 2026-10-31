@@ -156,7 +156,7 @@ function FamilyCard({ navigate }: { navigate: (id:RouteId)=>void }) {
   </section>;
 }
 
-function Guide({ totalProtein, onPlan, onNavigate, notify, targets }: { totalProtein: number; targets: NutritionTargets; onPlan: (id: string)=>void; onNavigate: (id:RouteId)=>void; notify: (n:Notice)=>void }) {
+function Guide({ totalProtein, hasObservations, onPlan, onNavigate, notify, targets }: { totalProtein: number; hasObservations:boolean; targets: NutritionTargets; onPlan: (id: string)=>void; onNavigate: (id:RouteId)=>void; notify: (n:Notice)=>void }) {
   const [start,setStart]=useState(0);
   const [input,setInput]=useState('');
   const [reply,setReply]=useState('');
@@ -167,7 +167,7 @@ function Guide({ totalProtein, onPlan, onNavigate, notify, targets }: { totalPro
     const q=input.trim();
     if(!q)return;
     const lower=q.toLowerCase();
-    if(lower.includes('protein')) setReply(`The sample meal log has ${Math.round(totalProtein)}g of protein against an illustrative ${targets.proteinG}g target. This does not establish actual intake.`);
+    if(lower.includes('protein')) setReply(hasObservations?`The sample log has ${Math.round(totalProtein)}g against an illustrative ${targets.proteinG}g target. Incomplete logs do not prove insufficient eating.`:'No logged meals were observed for this date; no intake gap can be inferred.');
     else if(lower.includes('plan') || lower.includes('dinner')) setReply('You can choose a dinner option above to update the demo plan. Full adaptive planning will arrive in Phase 3.');
     else if(lower.includes('groc') || lower.includes('inventory')) setReply('The sample basket is under Grocery & Inventory. Real household inventory connections are planned for Phase 3.');
     else setReply('This is a rule-based dashboard preview, not a connected AI model. The policy-controlled assistant arrives in Phase 4.');
@@ -175,8 +175,8 @@ function Guide({ totalProtein, onPlan, onNavigate, notify, targets }: { totalPro
   }
   return <aside className="guide-panel">
     <div className="guide-head"><div><Leaf size={22}/><h2>AI Nutrition Guide</h2></div><span className="beta-tag">Preview</span></div>
-    <div className="guide-body"><div className="guide-alert"><span>✦</span><strong>About {Math.round(gap)}g below the sample protein target.</strong></div>
-      <p className="guide-explain">Based on this example meal log, here are some dinner ideas. Confirm actual ingredients, portions and any dietary restrictions.</p>
+    <div className="guide-body"><div className="guide-alert"><span>✦</span><strong>{hasObservations?`About ${Math.round(gap)}g below the sample protein target.`:'No confirmed intake for this date'}</strong></div>
+      <p className="guide-explain">{hasObservations?'Based on this incomplete example meal log, these are dinner ideas, not evidence of a deficiency.':'Planned meals do not establish consumption. Log an observed meal before interpreting a nutrient gap.'} Confirm ingredients, portions and dietary restrictions.</p>
       <div className="suggestion-list">{options.map((item, idx) => <article className={`suggestion ${idx===0?'featured':''}`} key={item.id}><span className="suggestion-photo">{item.emoji}</span><div className="suggestion-content"><b>{item.title}</b>{idx===0&&<div className="tags">{item.tags.map(t=><span key={t}>{t}</span>)}</div>}<div className="suggestion-meta"><span><Flame size={12}/>{item.energyKcal} kcal</span><span><Activity size={12}/>{item.proteinG}g protein</span><span><Clock size={12}/>{item.minutes} min</span></div></div><button type="button" className="suggestion-select" title={`Review ${item.title} in planner`} aria-label={`Review ${item.title} in planner`} onClick={()=>{onPlan(item.id);notify({title:'Review this dinner',body:`${item.title} is an illustrative suggestion. Choose an available recipe and approve it in the Meal Planner; no meal was silently changed.`});}}><ChevronRight size={18}/></button></article>)}</div>
       <button className="primary-button guide-generate" type="button" onClick={()=>setStart((start+1)%sampleRecommendations.length)}>Explore more meal ideas <ArrowRight size={16}/></button>
       <form className="guide-ask" onSubmit={ask}><label htmlFor="guide-query" className="sr-only">Ask about demo nutrition</label><input id="guide-query" value={input} onChange={e=>setInput(e.target.value)} placeholder="Ask about this nutrition preview..." maxLength={180}/><button title="Send preview question" aria-label="Send preview question" type="submit"><Send size={17}/></button></form>
@@ -206,15 +206,15 @@ function Dashboard({ meals, waterL, groceries, toggleGrocery, onAdd, onViewMeal,
     </header>
     {!isSampleDay ? <section className="panel empty-date"><CalendarDays size={34}/><h2>No sample records for this date</h2><p>Missing records are unknown intake, not zero intake. The demo figures are only available for its example day.</p><button className="primary-button" type="button" onClick={onReset}>Return to sample day <ArrowRight size={16}/></button></section> :
     <>
-    <div className="stats-grid"><article className="summary-card score-card"><RadialProgress value={overall} size="large"/><div><span className="metric-label">Goal alignment</span><h2>Daily overview</h2><p>Illustrative progress from logged example meals.</p></div></article>
-      <SummaryCard icon={Flame} title="Energy" value={`${totals.energyKcal.toLocaleString()} / ${targets.energyKcal.toLocaleString()} kcal`} detail={`${remaining(totals.energyKcal,targets.energyKcal)} kcal to example target`} progress={energyPct} color="orange"/>
-      <SummaryCard icon={Activity} title="Protein" value={`${Math.round(totals.proteinG)} / ${targets.proteinG} g`} detail={`${Math.round(remaining(totals.proteinG,targets.proteinG))}g to example target`} progress={proteinPct} color="blue"/>
+    <div className="stats-grid"><article className="summary-card score-card"><RadialProgress value={overall} size="large"/><div><span className="metric-label">Goal alignment</span><h2>{totals.hasObservations?'Daily overview':'No observed intake'}</h2><p>{totals.hasObservations?'Illustrative progress from logged example meals.':'No confirmed meal log for this date. Missing data is unknown intake.'}</p></div></article>
+      <SummaryCard icon={Flame} title="Energy" value={totals.hasObservations?`${totals.energyKcal.toLocaleString()} / ${targets.energyKcal.toLocaleString()} kcal`:"Not recorded"} detail={totals.hasObservations?`${remaining(totals.energyKcal,targets.energyKcal)} kcal to example target`:"No confirmed meal observations"} progress={energyPct} color="orange"/>
+      <SummaryCard icon={Activity} title="Protein" value={totals.hasObservations?`${Math.round(totals.proteinG)} / ${targets.proteinG} g`:"Not recorded"} detail={totals.hasObservations?`${Math.round(remaining(totals.proteinG,targets.proteinG))}g to example target`:"No confirmed meal observations"} progress={proteinPct} color="blue"/>
       <SummaryCard icon={Droplets} title="Hydration" value={waterObserved ? `${waterL.toFixed(2).replace(/0$/,"")} / ${targets.hydrationL} L` : "Not recorded"} detail={waterObserved ? `${remaining(waterL,targets.hydrationL).toFixed(2)} L to example target` : "No hydration observation for this date"} progress={waterPct} color="cyan"/>
     </div>
     <div className="dashboard-content"><div className="dashboard-main">
       <div className="mid-grid"><MealTimeline meals={meals} onAdd={onAdd} onView={onViewMeal} onNavigate={navigate}/><NutrientsPanel tab={nutriTab} setTab={setNutriTab} totals={totals} navigate={navigate} targets={targets}/></div>
       <div className="bottom-grid"><WeeklyCard navigate={navigate}/><GroceryCard groceries={groceries} toggleGrocery={toggleGrocery} tab={groceryTab} setTab={setGroceryTab} navigate={navigate} budget={budget} inventoryPreview={inventoryPreview}/><FamilyCard navigate={navigate}/></div>
-    </div><Guide totalProtein={totals.proteinG} targets={targets} onPlan={onPlanDinner} onNavigate={navigate} notify={notify}/></div>
+    </div><Guide totalProtein={totals.proteinG} hasObservations={totals.hasObservations} targets={targets} onPlan={onPlanDinner} onNavigate={navigate} notify={notify}/></div>
     </>
     }
   </div>;

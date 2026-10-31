@@ -30,6 +30,7 @@ export interface ShoppingLine {
 }
 export interface GroceryList {
   id: string; sourcePlanId: string | null; sourceRevision: number | null;
+  sourceStockEventCount:number|null; // detect pantry changes after requirement generation
   createdOn: string; lines: ShoppingLine[];
 }
 export interface PlanTotals { energyKcal: number; proteinG: number; estimatedCostKes: number; meals: number; }
@@ -154,7 +155,7 @@ export function generateGroceries(plan:WeeklyPlan,recipes:readonly RecipeRecord[
     return {id:'need-'+foodId,foodId,quantityServings:round3(Math.max(0,qty-offset)),unitPriceKes:prices[foodId]??0,
       purchased:false,paidKes:null,received:false,source:'plan' as const,neededServings:qty,stockOffsetServings:offset};
   }).filter(line=>line.quantityServings>0.001).sort((a,b)=>a.foodId.localeCompare(b.foodId));
-  return {id:'grocery-'+plan.id+'-rev'+plan.revision,sourcePlanId:plan.id,sourceRevision:plan.revision,createdOn,lines};
+  return {id:'grocery-'+plan.id+'-rev'+plan.revision,sourcePlanId:plan.id,sourceRevision:plan.revision,sourceStockEventCount:movements.length,createdOn,lines};
 }
 export function estimateGroceries(list:GroceryList):number{
   return Math.round(list.lines.reduce((s,l)=>s+l.quantityServings*l.unitPriceKes,0));
