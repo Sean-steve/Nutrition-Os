@@ -1,8 +1,10 @@
 import {loadConfig} from './config.js';
 import {makePool,assertNoBypassRls} from './db.js';
 import {buildApp} from './http.js';
+import {assertProductionReleaseConfig} from './release/security.js';
 async function main(){
   const config=loadConfig();
+  assertProductionReleaseConfig(config);
   const pool=makePool(config.databaseUrl);
   try{
     // Never run the HTTP API as a migration owner, superuser or BYPASSRLS role.
