@@ -110,9 +110,14 @@ export async function buildApp(opts:{pool:Pool;config:Config}){
   app.get('/health/ready',async(_req,reply)=>{
     try{
       await pool.query('SELECT 1');
-      const migrated=await pool.query("SELECT filename FROM nutrition.schema_migrations WHERE filename=ANY($1::text[])",
-        [['001_core.sql','002_rls.sql','003_owner_fks.sql','004_live_household.sql','005_kernel_governance.sql']]);
-      if(migrated.rows.length!==5)throw new Error('Unapplied schema migrations');
+      // No migration-role privileges are granted to the HTTP pool.
+      // Verify the schema signature with catalog lookups instead.
+      const schema=await pool.query("SELECT " +
+        "to_regclass('nutrition.profile') IS NOT NULL AS core,"+
+        "to_regclass('nutrition.hydration_day') IS NOT NULL AS live,"+
+        "to_regclass('nutrition.kernel_binding') IS NOT NULL AS kernel");
+      if(!schema.rows[0]?.core||!schema.rows[0]?.live||!schema.rows[0]?.kernel)
+        throw new Error('Required schema objects missing');
       return {status:'ready',database:true,migrations:true};
     }catch{
       reply.code(503);return {status:'unavailable',database:false,migrations:false};
