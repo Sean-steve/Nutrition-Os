@@ -120,7 +120,19 @@ describe('Phase 6 authenticated personal and shared integration',()=>{
    const budget=(await req(owner,'GET','/budget')).json.data;
    expect(budget.explicitRecordedPaidKes).toBe(125);
    const family=(await req(member,'GET','/family')).json.data;
-   expect(JSON.stringify(family)).not.toContain('125');
+   expect(family.boards).toHaveLength(1);
+   // UUIDs may incidentally contain the digits of a private payment amount.
+   // Check for private fields and structurally unauthorized money projections,
+   // rather than substring matching arbitrary identifiers.
+   const fields=JSON.stringify(family);
+   expect(fields).not.toMatch(/"actual_paid_kes"|"actualPaidKes"|"payment_id"|"finance_transaction_id"|"personalBudgetKes"/);
+   for(const board of family.boards){
+     for(const line of board.groceries){
+       expect(line).not.toHaveProperty('actual_paid_kes');
+       expect(line).not.toHaveProperty('actualPaidKes');
+       expect(line).not.toHaveProperty('payment_id');
+     }
+   }
    const inventory=await req(owner,'GET','/inventory/movements');
    expect(inventory.status).toBe(200);expect(inventory.json.data.length).toBeGreaterThan(0);
    expect((await req(member,'GET','/inventory')).json.data).toHaveLength(0);
