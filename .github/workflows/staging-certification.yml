@@ -1,0 +1,37 @@
+name: Phase 8.1 — External staging API certification (operator invoked)
+on:
+  workflow_dispatch:
+    inputs:
+      allow_synthetic_write:
+        description: "Explicitly allow one synthetic-account food create/idempotency/retire drill"
+        required: true
+        default: false
+        type: boolean
+permissions:
+  contents: read
+jobs:
+  certify-staging:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    environment: nutrition-staging
+    timeout-minutes: 15
+    env:
+      NUTRITION_STAGING_WEB_URL: ${{ vars.NUTRITION_STAGING_WEB_URL }}
+      NUTRITION_STAGING_API_URL: ${{ vars.NUTRITION_STAGING_API_URL }}
+      NUTRITION_STAGING_TEST_USER_TOKEN: ${{ secrets.NUTRITION_STAGING_TEST_USER_TOKEN }}
+      NUTRITION_STAGING_SYNTHETIC_ACCOUNT: ${{ vars.NUTRITION_STAGING_SYNTHETIC_ACCOUNT }}
+      NUTRITION_STAGING_ALLOW_MUTATION: ${{ inputs.allow_synthetic_write }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Run strict external staging gates against deployed services
+        run: node scripts/staging/certify.mjs --require-technical --output phase8-1-staging-evidence.json
+      - name: Preserve metadata-only certification evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: phase8-1-staging-evidence
+          path: phase8-1-staging-evidence.json
+          if-no-files-found: warn
