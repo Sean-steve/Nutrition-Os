@@ -4,7 +4,7 @@ import {
   Check, CheckCircle2, ChevronDown, ChevronLeft, ChevronRight, Clock,
   Droplets, Flame, Heart, Home, Info, Leaf, LockKeyhole, Menu,
   Package, Plus, Search, Send, Settings, ShieldCheck, ShoppingBasket,
-  Sparkles, Target, TrendingUp, Users, Utensils, X,
+  Sparkles, Target, TrendingUp, Users, Utensils, Wallet, AlertTriangle, X,
   type LucideIcon,
 } from 'lucide-react';
 import {
@@ -12,12 +12,16 @@ import {
   clampProgress, formatKes, remaining, type FoodChoice, type GroceryItem, type MealRecord, type MealSlot,
 } from '../domain/nutrition';
 import {
-  SAMPLE_DATE, sampleFoodChoices, sampleGroceries, sampleMeals, sampleRecommendations,
+  SAMPLE_DATE, sampleFoodChoices, sampleMeals, sampleRecommendations,
   sampleRoadmap, sampleWeeklyProgress,
 } from '../data/sample';
 import { DEFAULT_PROFILE, DEFAULT_TARGETS, mealsOnDate, type NutritionProfile, type NutritionTargets, type RecipeRecord } from '../domain/personal';
 import { sampleRecipes } from '../data/personalFixtures';
 import PersonalExperience, { type PersonalRoute } from './PersonalExperience';
+import ResourceExperience, { type ResourceRoute } from './ResourceExperience';
+import { sampleWeeklyPlan, sampleInventoryLots, sampleStockMovements, sampleGroceriesGenerated, sampleUnitPricesKes, sampleFoodBudgetKes } from '../data/resourceFixtures';
+import { appendMovement, generateGroceries, isoDate, lotBalance, transferStock, type WeeklyPlan, type GroceryList, type InventoryLot, type ShoppingLine, type StockMovement, type StorageLocation } from '../domain/resources';
+import { recipeAmount } from '../domain/personal';
 
 type RouteId = 'dashboard' | keyof typeof sampleRoadmap;
 type NutriTab = 'macros' | 'micros' | 'other';
@@ -34,6 +38,8 @@ const NAV_ITEMS: { id: RouteId; label: string; icon: LucideIcon }[] = [
   { id: 'recipes', label: 'Recipe Studio', icon: Utensils },
   { id: 'groceries', label: 'Groceries', icon: ShoppingBasket },
   { id: 'inventory', label: 'Inventory', icon: Package },
+  { id: 'budget', label: 'Food Budget', icon: Wallet },
+  { id: 'waste', label: 'Waste & Expiry', icon: AlertTriangle },
   { id: 'goals', label: 'Goals', icon: Target },
   { id: 'insights', label: 'Insights', icon: BarChart3 },
   { id: 'progress', label: 'Progress', icon: TrendingUp },
@@ -129,7 +135,7 @@ function WeeklyCard({ navigate }: { navigate: (id: RouteId)=>void }) {
   </section>;
 }
 
-function GroceryCard({ groceries, toggleGrocery, tab, setTab, navigate }: { groceries: GroceryItem[]; toggleGrocery: (id: string) => void; tab: GroceryTab; setTab: (t:GroceryTab)=>void; navigate: (id:RouteId)=>void }) {
+function GroceryCard({ groceries, toggleGrocery, tab, setTab, navigate, budget, inventoryPreview }: { groceries: GroceryItem[]; toggleGrocery: (id: string) => void; tab: GroceryTab; setTab: (t:GroceryTab)=>void; navigate: (id:RouteId)=>void; budget:number; inventoryPreview:{id:string;name:string;emoji:string;quantity:number}[] }) {
   const sum = groceries.reduce((n,g)=>n+g.priceKes,0);
   const done = groceries.filter(g=>g.purchased).length;
   return <section className="panel grocery-panel"><CardHeading title="Grocery & inventory" action="View all" onAction={()=>navigate('groceries')}/>
@@ -138,8 +144,8 @@ function GroceryCard({ groceries, toggleGrocery, tab, setTab, navigate }: { groc
       <button role="tab" aria-selected={tab==='inventory'} type="button" className={tab==='inventory'?'selected':''} onClick={()=>setTab('inventory')}>Inventory</button>
     </div>
     {tab === 'list' ? <div className="grocery-content"><div className="grocery-items">{groceries.slice(0,4).map(g=><label className="grocery-item" key={g.id}><input type="checkbox" checked={g.purchased} onChange={()=>toggleGrocery(g.id)}/><span className="grocery-emoji" aria-hidden="true">{g.emoji}</span><span className="grocery-item-name"><b>{g.name}</b><small>{g.quantity}</small></span><span className="grocery-price">{formatKes(g.priceKes)}</span></label>)}</div>
-      <div className="budget-box"><small>Estimated basket</small><strong>{formatKes(sum)}</strong><small>Example budget: KES 5,500</small><ProgressBar value={clampProgress(sum,5500)}/><span>{done} of {groceries.length} checked off</span><button className="primary-button small" type="button" onClick={()=>navigate('groceries')}>Open groceries <ArrowRight size={15}/></button></div></div> :
-      <div className="inventory-preview"><div>🥚 <strong>Eggs</strong><span>18 remaining</span></div><div>🍚 <strong>Rice</strong><span>3 kg</span></div><div>🥬 <strong>Sukuma wiki</strong><span>Use soon</span></div><button type="button" className="text-action" onClick={()=>navigate('inventory')}>Open inventory <ArrowRight size={15}/></button></div>}
+      <div className="budget-box"><small>Estimated basket</small><strong>{formatKes(sum)}</strong><small>Example budget: {formatKes(budget)}</small><ProgressBar value={clampProgress(sum,budget)}/><span>{done} of {groceries.length} checked off</span><button className="primary-button small" type="button" onClick={()=>navigate('groceries')}>Open groceries <ArrowRight size={15}/></button></div></div> :
+      <div className="inventory-preview">{inventoryPreview.slice(0,3).map(l=><div key={l.id}>{l.emoji} <strong>{l.name}</strong><span>{l.quantity} servings</span></div>)}{!inventoryPreview.length&&<div>No recorded stock</div>}<button type="button" className="text-action" onClick={()=>navigate('inventory')}>Open inventory <ArrowRight size={15}/></button></div>}
   </section>;
 }
 
@@ -181,10 +187,10 @@ function Guide({ totalProtein, onPlan, onNavigate, notify, targets }: { totalPro
   </aside>;
 }
 
-function Dashboard({ meals, waterL, groceries, toggleGrocery, onAdd, onViewMeal, onPlanDinner, navigate, notify, isSampleDay, onReset, targets, waterObserved, displayName }: {
+function Dashboard({ meals, waterL, groceries, toggleGrocery, onAdd, onViewMeal, onPlanDinner, navigate, notify, isSampleDay, onReset, targets, waterObserved, displayName, budget, inventoryPreview }: {
   meals: MealRecord[]; waterL:number; groceries:GroceryItem[]; toggleGrocery:(id:string)=>void;
   onAdd:()=>void; onViewMeal:(m:MealRecord)=>void; onPlanDinner:(id:string)=>void;
-  navigate:(id:RouteId)=>void; notify:(n:Notice)=>void; isSampleDay:boolean; onReset:()=>void; targets:NutritionTargets; waterObserved:boolean; displayName:string;
+  navigate:(id:RouteId)=>void; notify:(n:Notice)=>void; isSampleDay:boolean; onReset:()=>void; targets:NutritionTargets; waterObserved:boolean; displayName:string; budget:number; inventoryPreview:{id:string;name:string;emoji:string;quantity:number}[];
 }) {
   const [nutriTab,setNutriTab]=useState<NutriTab>('macros');
   const [groceryTab,setGroceryTab]=useState<GroceryTab>('list');
@@ -207,7 +213,7 @@ function Dashboard({ meals, waterL, groceries, toggleGrocery, onAdd, onViewMeal,
     </div>
     <div className="dashboard-content"><div className="dashboard-main">
       <div className="mid-grid"><MealTimeline meals={meals} onAdd={onAdd} onView={onViewMeal} onNavigate={navigate}/><NutrientsPanel tab={nutriTab} setTab={setNutriTab} totals={totals} navigate={navigate} targets={targets}/></div>
-      <div className="bottom-grid"><WeeklyCard navigate={navigate}/><GroceryCard groceries={groceries} toggleGrocery={toggleGrocery} tab={groceryTab} setTab={setGroceryTab} navigate={navigate}/><FamilyCard navigate={navigate}/></div>
+      <div className="bottom-grid"><WeeklyCard navigate={navigate}/><GroceryCard groceries={dashboardGroceries} toggleGrocery={toggleGrocery} tab={groceryTab} setTab={setGroceryTab} navigate={navigate} budget={budget} inventoryPreview={inventoryPreview}/><FamilyCard navigate={navigate}/></div>
     </div><Guide totalProtein={totals.proteinG} targets={targets} onPlan={onPlanDinner} onNavigate={navigate} notify={notify}/></div>
     </>
     }
@@ -273,7 +279,11 @@ export default function App() {
   const [targets,setTargets]=useState<NutritionTargets>(DEFAULT_TARGETS);
   const [recipes,setRecipes]=useState<RecipeRecord[]>(sampleRecipes);
   const [waterL,setWaterL]=useState(1.7);
-  const [groceries,setGroceries]=useState<GroceryItem[]>(sampleGroceries);
+  const [plans,setPlans]=useState<WeeklyPlan[]>([sampleWeeklyPlan]);
+  const [lots,setLots]=useState<InventoryLot[]>(sampleInventoryLots);
+  const [stockMovements,setStockMovements]=useState<StockMovement[]>(sampleStockMovements);
+  const [shoppingList,setShoppingList]=useState<GroceryList>(sampleGroceriesGenerated);
+  const [foodBudget,setFoodBudget]=useState(sampleFoodBudgetKes);
   const [dayOffset,setDayOffset]=useState(0);
   const [search,setSearch]=useState('');
   const [showSearch,setShowSearch]=useState(false);
@@ -287,14 +297,60 @@ export default function App() {
   const date=useMemo(()=>{const d=new Date(`${SAMPLE_DATE}T12:00:00Z`);d.setUTCDate(d.getUTCDate()+dayOffset);return d.toLocaleDateString('en-KE',{weekday:'short',month:'short',day:'numeric',year:'numeric',timeZone:'UTC'});},[dayOffset]);
   const activeDate=useMemo(()=>{const d=new Date(SAMPLE_DATE+'T12:00:00Z');d.setUTCDate(d.getUTCDate()+dayOffset);return d.toISOString().slice(0,10);},[dayOffset]);
   const nav=(id:RouteId)=>{setRoute(id);window.location.hash=id==='dashboard'?'#/':'#/'+id;setMobileOpen(false);setShowSearch(false);setProfileOpen(false);};
-  const toggleGrocery=(id:string)=>setGroceries(prev=>prev.map(g=>g.id===id?{...g,purchased:!g.purchased}:g));
+  const toggleGrocery=(id:string)=>setShoppingList(prev=>({...prev,lines:prev.lines.map(l=>l.id===id&&!l.received?{...l,purchased:!l.purchased,paidKes:l.purchased?null:l.paidKes}:l)}));
+  const dashboardGroceries:GroceryItem[]=shoppingList.lines.map(l=>{
+    const f=sampleFoodChoices.find(f=>f.id===l.foodId);
+    return {id:l.id,name:f?.name??l.foodId,quantity:l.quantityServings+' × '+(f?.serving??'serving'),priceKes:Math.round(l.quantityServings*l.unitPriceKes),emoji:f?.emoji??'🧺',purchased:l.purchased};
+  });
+  const inventoryPreview=lots.map(l=>({id:l.id,name:sampleFoodChoices.find(f=>f.id===l.foodId)?.name??l.foodId,emoji:sampleFoodChoices.find(f=>f.id===l.foodId)?.emoji??'📦',quantity:lotBalance(l.id,stockMovements)})).filter(x=>x.quantity>0);
+  const onSavePlan=(plan:WeeklyPlan)=>setPlans(prev=>prev.some(p=>p.id===plan.id)?prev.map(p=>p.id===plan.id?plan:p):[...prev,plan]);
+  const onGenerateGroceries=(plan:WeeklyPlan)=>setShoppingList(generateGroceries(plan,recipes,lots,stockMovements,sampleUnitPricesKes,activeDate));
+  const onAddLot=(lot:InventoryLot,quantity:number)=>{
+    if(lots.some(l=>l.id===lot.id)||!Number.isFinite(quantity)||quantity<=0||quantity>1000||!Number.isFinite(lot.unitPriceKes)||lot.unitPriceKes<0||lot.unitPriceKes>100000||!isoDate(lot.acquiredOn)||(lot.expiresOn&&!isoDate(lot.expiresOn)))throw new Error('Invalid stock lot, quantity or unit price.');
+    const newLots=[...lots,lot];
+    const newLedger=appendMovement(newLots,stockMovements,{id:'initial-'+lot.id,lotId:lot.id,date:lot.acquiredOn,kind:'PURCHASE',deltaServings:quantity,note:'Stock receipt entered in preview'});
+    setLots(newLots);setStockMovements(newLedger);
+  };
+  const onRecordMovement=(movement:StockMovement)=>setStockMovements(appendMovement(lots,stockMovements,movement));
+  const onTransferStock=(sourceId:string,destination:StorageLocation,quantity:number,date:string)=>{
+    const result=transferStock(lots,stockMovements,sourceId,destination,quantity,date,'transfer-'+Date.now().toString(36)+'-'+Math.random().toString(36).slice(2,7));
+    setLots(result.lots);setStockMovements(result.movements);
+  };
+  const onReceive=(line:ShoppingLine,location:StorageLocation,expiry:string|null)=>{
+    const actual=shoppingList.lines.find(l=>l.id===line.id);
+    if(!actual||!actual.purchased||actual.received||actual.quantityServings<=0||!Number.isFinite(actual.quantityServings)||(expiry&&!isoDate(expiry)))throw new Error('Purchase must be checked, unreceived and have valid quantity.');
+    const lot:InventoryLot={id:'received-'+Date.now().toString(36)+'-'+Math.random().toString(36).slice(2,7),foodId:actual.foodId,location,acquiredOn:activeDate,expiresOn:expiry,unitPriceKes:actual.unitPriceKes};
+    const newLots=[...lots,lot],ledger=appendMovement(newLots,stockMovements,{id:'receipt-'+lot.id,lotId:lot.id,date:activeDate,kind:'PURCHASE',deltaServings:actual.quantityServings,note:'Confirmed grocery receipt'});
+    setLots(newLots);setStockMovements(ledger);
+    setShoppingList(prev=>({...prev,lines:prev.lines.map(l=>l.id===line.id?{...l,received:true}:l)}));
+  };
   function planDinner(id:string){const choice=sampleRecommendations.find(r=>r.id===id);if(!choice)return;setMeals(prev=>prev.map(m=>m.id==='m-dinner'?{...m,name:choice.title,emoji:choice.emoji,energyKcal:choice.energyKcal,proteinG:choice.proteinG,details:'Planned · not yet logged'}:m));}
   function addMeal(meal:MealRecord){setMeals(prev=>[...prev,{...meal,recordedOn:meal.recordedOn??activeDate}].sort((a,b)=>a.time.localeCompare(b.time)));setMealModal(false);setNotice({title:'Sample meal added',body:'Your preview totals were updated in memory. No data was saved to a server.'});}
   const personalRoutes:PersonalRoute[]=['onboarding','profile','today','meals','foods','recipes','goals','progress'];
-  const editMeal=(meal:MealRecord)=>setMeals(prev=>prev.map(m=>m.id===meal.id?meal:m));
+  const editMeal=(meal:MealRecord)=>setMeals(prev=>{
+    const found=prev.some(m=>m.id===meal.id);
+    if(found)return prev.map(m=>m.id===meal.id?meal:m);
+    if(meal.planEntryId&&meal.status==='logged'&&!prev.some(m=>m.planEntryId===meal.planEntryId&&m.status==='logged'))return [...prev,{...meal,id:'consumed-'+meal.planEntryId}];
+    return prev;
+  });
   const removeMeal=(id:string)=>{setMeals(prev=>prev.filter(m=>m.id!==id));setNotice({title:'Meal removed',body:'Example record removed from the session. No server data was changed.'});};
   const saveRecipe=(recipe:RecipeRecord)=>setRecipes(prev=>prev.some(r=>r.id===recipe.id)?prev.map(r=>r.id===recipe.id?recipe:r):[...prev,recipe]);
   const adjustWater=(delta:number)=>setWaterL(v=>Math.max(0,Math.min(10,Math.round((v+delta)*100)/100)));
+  const visibleMeals=useMemo(()=>{
+    const approved=plans.filter(p=>p.status==='approved').flatMap(p=>p.entries);
+    const loggedIds=new Set(meals.filter(m=>m.status==='logged'&&m.planEntryId).map(m=>m.planEntryId));
+    const planned=approved.filter(e=>!loggedIds.has(e.id)).flatMap(e=>{
+      const recipe=recipes.find(r=>r.id===e.recipeId);if(!recipe)return [];
+      try {
+        const macros=recipeAmount(recipe,sampleFoodChoices,e.portions);
+        const record:MealRecord={id:'from-plan-'+e.id,planEntryId:e.id,recordedOn:e.date,slot:e.slot,name:recipe.name,emoji:recipe.emoji,details:e.portions+' serving(s) · approved plan, not consumed',time:e.slot==='Breakfast'?'08:00':e.slot==='Lunch'?'13:00':e.slot==='Snack'?'16:00':'19:00',status:'planned',...macros};
+        return [record];
+      } catch {return [];}
+    });
+    const base=meals.filter(m=>!(m.status==='planned'&&approved.some(e=>e.date===(m.recordedOn??SAMPLE_DATE)&&e.slot===m.slot)));
+    return [...base,...planned];
+  },[meals,plans,recipes]);
+  const resourceRoutes:ResourceRoute[]=['planner','groceries','inventory','budget','waste'];
   const foodResults=sampleFoodChoices.filter(f=>f.name.toLowerCase().includes(search.toLowerCase())).slice(0,5);
   return <div className="app-shell">
     <div className={`sidebar-overlay ${mobileOpen?'show':''}`} onClick={()=>setMobileOpen(false)} aria-hidden="true"/>
@@ -314,9 +370,9 @@ export default function App() {
       <div className="profile-wrap"><button type="button" className="profile-button" onClick={()=>{setProfileOpen(!profileOpen);setNotifications(false);}} aria-expanded={profileOpen}><span className="avatar">A</span><span className="profile-copy"><b>Demo profile</b><small>{view==='personal'?'Personal view':'Family view'}</small></span><ChevronDown size={16}/></button>{profileOpen&&<div className="top-popover profile-popover"><button type="button" onClick={()=>{setView('personal');nav('dashboard');}}>Personal dashboard</button><button type="button" onClick={()=>{setView('family');nav('dashboard');}}>Family dashboard</button><button type="button" onClick={()=>nav('profile')}>Nutrition profile</button><button type="button" onClick={()=>nav('onboarding')}>Run onboarding</button><span>Sample session · no sign-in</span></div>}</div>
       </div></header>
       <main className="workspace"><div className="workspace-toolbar"><span className="preview-badge"><span className="preview-dot"/> SAMPLE DATA · INTERACTIVE PREVIEW</span><div className="toolbar-actions"><button className="utility-btn" type="button" disabled={dayOffset!==0} onClick={()=>{adjustWater(.25);setNotice({title:'Hydration updated',body:'Added 250 ml to the example day. This change is temporary.'});}}><Droplets size={16}/> +250 ml water</button><button className="primary-button toolbar-add" type="button" onClick={()=>setMealModal(true)}><Plus size={17}/> Log meal</button></div></div>
-      {route==='dashboard' ? view==='personal'?<Dashboard meals={mealsOnDate(meals,activeDate,SAMPLE_DATE)} waterL={dayOffset===0?waterL:0} waterObserved={dayOffset===0} displayName={profile.onboardingComplete?profile.displayName:""} targets={targets} groceries={groceries} toggleGrocery={toggleGrocery} onAdd={()=>setMealModal(true)} onViewMeal={setSelectedMeal} onPlanDinner={planDinner} navigate={nav} notify={setNotice} isSampleDay={dayOffset===0 || mealsOnDate(meals,activeDate,SAMPLE_DATE).some(m=>m.status==="logged")} onReset={()=>setDayOffset(0)}/>:<FamilyOverview navigate={nav}/> :
-        personalRoutes.includes(route as PersonalRoute)?<PersonalExperience key={route} route={route as PersonalRoute} meals={meals} activeDate={activeDate} waterL={waterL} profile={profile} targets={targets} recipes={recipes} foods={sampleFoodChoices} navigate={nav} onOpenMealLogger={()=>setMealModal(true)} onViewMeal={setSelectedMeal} onAddMeal={addMeal} onEditMeal={editMeal} onDeleteMeal={removeMeal} onSaveProfile={setProfile} onSaveTargets={setTargets} onSaveRecipe={saveRecipe} onDeleteRecipe={id=>setRecipes(prev=>prev.filter(r=>r.id!==id))} onAdjustWater={adjustWater} onNotice={(title,body)=>setNotice({title,body})}/>:route==='family'?<FamilyOverview navigate={nav}/>:<ModulePreview route={route} navigate={nav}/>}
-      <footer className="page-footer">Nutrition OS · Phase 2 personal nutrition preview <span>Sample values only · Not medical advice · No account data is used</span></footer>
+      {route==='dashboard' ? view==='personal'?<Dashboard meals={mealsOnDate(visibleMeals,activeDate,SAMPLE_DATE)} budget={foodBudget} inventoryPreview={inventoryPreview} waterL={dayOffset===0?waterL:0} waterObserved={dayOffset===0} displayName={profile.onboardingComplete?profile.displayName:""} targets={targets} groceries={groceries} toggleGrocery={toggleGrocery} onAdd={()=>setMealModal(true)} onViewMeal={setSelectedMeal} onPlanDinner={planDinner} navigate={nav} notify={setNotice} isSampleDay={dayOffset===0 || mealsOnDate(visibleMeals,activeDate,SAMPLE_DATE).length>0} onReset={()=>setDayOffset(0)}/>:<FamilyOverview navigate={nav}/> :
+        personalRoutes.includes(route as PersonalRoute)?<PersonalExperience key={route} route={route as PersonalRoute} meals={visibleMeals} activeDate={activeDate} waterL={waterL} profile={profile} targets={targets} recipes={recipes} foods={sampleFoodChoices} navigate={nav} onOpenMealLogger={()=>setMealModal(true)} onViewMeal={setSelectedMeal} onAddMeal={addMeal} onEditMeal={editMeal} onDeleteMeal={removeMeal} onSaveProfile={setProfile} onSaveTargets={setTargets} onSaveRecipe={saveRecipe} onDeleteRecipe={id=>setRecipes(prev=>prev.filter(r=>r.id!==id))} onAdjustWater={adjustWater} onNotice={(title,body)=>setNotice({title,body})}/>:resourceRoutes.includes(route as ResourceRoute)?<ResourceExperience key={route} route={route as ResourceRoute} activeDate={activeDate} plans={plans} recipes={recipes} foods={sampleFoodChoices} priceBook={sampleUnitPricesKes} lots={lots} movements={stockMovements} list={shoppingList} budgetKes={foodBudget} onPlan={onSavePlan} onList={setShoppingList} onGenerate={onGenerateGroceries} onBudget={setFoodBudget} onAddLot={onAddLot} onRecord={onRecordMovement} onTransfer={onTransferStock} onReceive={onReceive} navigate={nav} notify={(title,body)=>setNotice({title,body})}/>:route==='family'?<FamilyOverview navigate={nav}/>:<ModulePreview route={route} navigate={nav}/>}
+      <footer className="page-footer">Nutrition OS · Phase 3 meal planning & resources preview <span>Sample values only · Not medical advice · No account data is used</span></footer>
       </main>
     </div>
     {notice&&<div className="toast" role="status"><div><CheckCircle2 size={20}/><strong>{notice.title}</strong></div><p>{notice.body}</p><button type="button" onClick={()=>setNotice(null)} aria-label="Dismiss notice"><X size={16}/></button></div>}

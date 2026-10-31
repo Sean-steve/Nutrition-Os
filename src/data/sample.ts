@@ -51,6 +51,8 @@ export const sampleRoadmap: Record<string, { phase: string; description: string;
   foods: { phase: 'Phase 2', description: 'Food knowledge, serving conversion and local Kenyan ingredients.', highlights: ['Searchable food database', 'Recipes', 'Nutrition provenance'] },
   groceries: { phase: 'Phase 3', description: 'A budget-aware shopping workflow linked to meal plans.', highlights: ['Consolidated lists', 'KES budget constraints', 'Shopping history'] },
   inventory: { phase: 'Phase 3', description: 'Manage pantry, fridge and food expiry intelligently.', highlights: ['Stock ledger', 'Expiry alerts', 'Waste tracking'] },
+  budget: { phase: 'Phase 3', description: 'Illustrative KES food allocation and grocery purchase reconciliation.', highlights: ['Editable budget', 'Planned-versus-recorded costs', 'No financial ledger claims'] },
+  waste: { phase: 'Phase 3', description: 'Use-soon foods and immutable waste-event history.', highlights: ['Expiry watchlist', 'Waste events', 'Estimated discarded value'] },
   goals: { phase: 'Phase 2', description: 'Nutrition requirements and goal progress.', highlights: ['Time-bound goals', 'Nutrient targets', 'Goal history'] },
   insights: { phase: 'Phase 4', description: 'Explainable nutrition trends and recommendations.', highlights: ['Pattern detection', 'Recommendation evidence', 'Confidence and uncertainty'] },
   progress: { phase: 'Phase 2', description: 'Daily, weekly and monthly nutrition progress.', highlights: ['Nutrient trends', 'Consistency', 'Personal reviews'] },
