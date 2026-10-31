@@ -65,3 +65,11 @@
 - Projections, permissions and status exposed to a premium authenticated integration view. Unverified external context is not fabricated. Observed-only outbound envelope projector and pending schedule intents are implemented without claiming a real Event Mesh transport.
 - Automated real PostgreSQL and ephemeral RS256 JWKS tests check wrong audience, stale grant, scope gating, inbox duplicates, cross-user isolation, family revocation, schedule decisions and payload minimization.
 - Full HOS installation, real OIDC/JWKS exchange, HOS outbound event receipt, Family OS source of truth and cross-engine deployments remain explicit blockers. See PHASE_7_KERNEL_INTEGRATION.md.
+
+## Phase 8 — Code quality / operations hardening and mandatory release gate
+- Production API startup safety checks, privacy headers and authenticated/schema-aware readiness.
+- PostgreSQL CI dump/restore drill including audit/outbox counts and FORCE RLS.
+- Security/performance concurrency test suite; desktop/mobile Playwright and axe accessibility smoke.
+- Runtime dependency HIGH-severity audit. Machine-readable 18-gate evidence matrix and runbook.
+- Real HumanKernelOS/FAMILY OS, clinical/privacy, production infrastructure and disaster recovery certification remain blocked. NOT READY is the honest verdict.
+- Docs: PHASE_8_CERTIFICATION.md, PHASE_8_OPERATIONS_RUNBOOK.md, PHASE_8_RELEASE_EVIDENCE.json.
