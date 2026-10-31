@@ -1,18 +1,15 @@
 import {useEffect,useState,type FormEvent} from 'react';
 import {
   Activity,Apple,ArrowRight,BookOpen,CalendarDays,CheckCircle2,Droplets,Edit3,Flame,
-  Heart,Info,Leaf,Plus,ShieldCheck,Target,Trash2,TrendingUp,Utensils
+  Heart,Leaf,Plus,Target,Trash2,TrendingUp,Utensils
 } from 'lucide-react';
 import type {LiveProps} from '../types';
-import type {ServerFood,ServerMeal,ServerMealItem,ServerRecipe} from '../client';
+import type {ServerFood,ServerMeal,ServerRecipe} from '../client';
 import {asNumber,dateOnly,money} from '../client';
-import {Action,Card,Empty,Field,Head,Note,Stat,slots,shortId} from '../components';
+import {Action,Card,Empty,Field,Head,Note,Stat,slots} from '../components';
 type FoodEdit={id:string;revision:number}|null;
 type RecipeEdit={id:string;version:number}|null;
 const value=(v:number|string|null|undefined)=>v==null?'':String(v);
-function BlankAmount({label,current}:{label:string;current:number|null}){
- return <div className="lv-reading"><span>{label}</span><strong>{current===null?'Not recorded':current.toLocaleString('en-KE',{maximumFractionDigits:1})}</strong></div>;
-}
 export function DashboardScreen({p}:{p:LiveProps}){
  const state=p.data.state,targets=p.data.profile?.targets??{},today=p.data.meals.filter(m=>dateOnly(m.consumed_on)===p.date);
  const approved=p.data.plans.filter(x=>x.status==='approved'),basket=p.data.groceries.find(l=>l.status==='active');
