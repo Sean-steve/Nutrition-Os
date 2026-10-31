@@ -22,8 +22,8 @@ Nutrition OS is the authority for food records, meals, recipe calculations, requ
 ## Gap classification after Phase 1
 | Capability | State | Next |
 | --- | --- | --- |
-| Repository, app build, design tokens, shell | Implemented (subject to CI verification) | Maintain |
-| Personal dashboard using sample fixtures | Implemented (subject to CI verification) | Wire real state in backend integration |
+| Repository, app build, design tokens, shell | Implemented (GitHub CI verified) | Maintain |
+| Personal dashboard using sample fixtures | Implemented (GitHub CI verified) | Wire real state in backend integration |
 | Dashboard interactions | Sample/local-only | Phase 2+ |
 | Today/meal logging/recipes/goals | Planned | Phase 2 |
 | Meal plan/groceries/inventory/budget/waste | Planned | Phase 3 |
