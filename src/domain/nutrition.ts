@@ -33,6 +33,7 @@ export interface GroceryItem {
   priceKes: number;
   emoji: string;
   purchased: boolean;
+  received?: boolean; // once received into inventory, not editable via dashboard checkoff
 }
 export interface NutritionTotals {
   energyKcal: number;
