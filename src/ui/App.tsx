@@ -13,14 +13,14 @@ import {
 } from '../domain/nutrition';
 import {
   SAMPLE_DATE, sampleFoodChoices, sampleMeals,
-  sampleRoadmap, sampleWeeklyProgress,
+  sampleRoadmap,
 } from '../data/sample';
-import { DEFAULT_PROFILE, DEFAULT_TARGETS, mealsOnDate, type NutritionProfile, type NutritionTargets, type RecipeRecord } from '../domain/personal';
+import { DEFAULT_PROFILE, DEFAULT_TARGETS, mealsOnDate, observedDays, type NutritionProfile, type NutritionTargets, type RecipeRecord } from '../domain/personal';
 import { sampleRecipes } from '../data/personalFixtures';
 import PersonalExperience, { type PersonalRoute } from './PersonalExperience';
 import ResourceExperience, { type ResourceRoute } from './ResourceExperience';
 import { sampleWeeklyPlan, sampleInventoryLots, sampleStockMovements, sampleGroceriesGenerated, sampleUnitPricesKes, sampleFoodBudgetKes } from '../data/resourceFixtures';
-import { appendMovement, generateGroceries, isoDate, lotBalance, transferStock, type WeeklyPlan, type GroceryList, type InventoryLot, type ShoppingLine, type StockMovement, type StorageLocation } from '../domain/resources';
+import { appendMovement, estimateGroceries, generateGroceries, isoDate, lotBalance, mondayOf, shiftDate, transferStock, type WeeklyPlan, type GroceryList, type InventoryLot, type ShoppingLine, type StockMovement, type StorageLocation } from '../domain/resources';
 import { recipeAmount } from '../domain/personal';
 import { deriveInsights, previewCandidates, answerGuided, type DecisionContext, type InsightFeedback } from '../domain/intelligence';
 import { familyProjection, type FamilyWorkspaceState, type PublicFamilySummary } from '../domain/family';
@@ -131,11 +131,23 @@ function NutrientsPanel({ tab, setTab, totals, navigate, targets }: { tab: Nutri
   </section>;
 }
 
-function WeeklyCard({ navigate }: { navigate: (id: RouteId)=>void }) {
+function WeeklyCard({navigate,context}:{navigate:(id:RouteId)=>void;context:DecisionContext}){
+  const weekStart=mondayOf(context.asOf);
+  const all=Array.from({length:7},(_,i)=>shiftDate(weekStart,i));
+  const observed=new Set(observedDays(context.meals,SAMPLE_DATE).map(x=>x.date));
+  const weekObserved=all.filter(d=>observed.has(d)).length;
+  const plan=context.plans.find(p=>p.weekStart===weekStart&&p.status==='approved');
   return <section className="panel week-panel"><CardHeading title="This week" action="View progress" onAction={()=>navigate('progress')}/>
-    <div className="week-days">{sampleWeeklyProgress.map(d => <div className="week-day" key={d.label}><span>{d.label}</span><div className={`day-dot ${d.pct===null?'future':d.pct>=80?'done':'partial'}`}>{d.pct===null?'':d.pct>=80?<Check size={16}/>:<span style={{height:`${d.pct}%`}}/>}</div></div>)}</div>
-    <div className="week-kpis"><div><b>82%</b><span>Goal alignment*</span></div><div><b>4 / 7</b><span>Meals planned</span></div><div><b>KES 4,850</b><span>Grocery estimate</span></div></div>
-    <p className="subdued micro">*Illustrative weekly values from sample fixtures.</p>
+    <div className="week-days">{all.map(d=><div className="week-day" key={d}>
+      <span>{new Intl.DateTimeFormat('en-KE',{weekday:'short',timeZone:'UTC'}).format(new Date(d+'T12:00:00Z'))}</span>
+      <div className={`day-dot ${observed.has(d)?'done':'future'}`} title={observed.has(d)?'At least one confirmed meal log':'No recorded intake on this date'}>
+        {observed.has(d)?<Check size={16}/>:<span aria-label="No observed meal log">—</span>}
+      </div></div>)}</div>
+    <div className="week-kpis"><div><b>{weekObserved}/7</b><span>Days with observations</span></div>
+      <div><b>{plan?.entries.length??0}</b><span>Approved meal entries</span></div>
+      <div><b>{formatKes(estimateGroceries(context.groceries))}</b><span>Example grocery forecast</span></div>
+    </div>
+    <p className="subdued micro">Green indicates at least one meal logged, not a complete nutrition day. Missing days remain unknown.</p>
   </section>;
 }
 
@@ -221,14 +233,14 @@ function Dashboard({ meals, waterL, groceries, toggleGrocery, onAdd, onViewMeal,
     </header>
     {!isSampleDay ? <section className="panel empty-date"><CalendarDays size={34}/><h2>No sample records for this date</h2><p>Missing records are unknown intake, not zero intake. The demo figures are only available for its example day.</p><button className="primary-button" type="button" onClick={onReset}>Return to sample day <ArrowRight size={16}/></button></section> :
     <>
-    <div className="stats-grid"><article className="summary-card score-card"><RadialProgress value={overall} size="large"/><div><span className="metric-label">Goal alignment</span><h2>{totals.hasObservations?'Daily overview':'No observed intake'}</h2><p>{totals.hasObservations?'Illustrative progress from logged example meals.':'No confirmed meal log for this date. Missing data is unknown intake.'}</p></div></article>
+    <div className="stats-grid"><article className="summary-card score-card">{totals.hasObservations?<RadialProgress value={overall} size="large"/>:<div className="in-unknown-score" title="No logged meals">—</div>}<div><span className="metric-label">Observed log alignment</span><h2>{totals.hasObservations?'Daily overview':'No observed intake'}</h2><p>{totals.hasObservations?'Illustrative progress from logged example meals.':'No confirmed meal log for this date. Missing data is unknown intake.'}</p></div></article>
       <SummaryCard icon={Flame} title="Energy" value={totals.hasObservations?`${totals.energyKcal.toLocaleString()} / ${targets.energyKcal.toLocaleString()} kcal`:"Not recorded"} detail={totals.hasObservations?`${remaining(totals.energyKcal,targets.energyKcal)} kcal to example target`:"No confirmed meal observations"} progress={energyPct} color="orange"/>
       <SummaryCard icon={Activity} title="Protein" value={totals.hasObservations?`${Math.round(totals.proteinG)} / ${targets.proteinG} g`:"Not recorded"} detail={totals.hasObservations?`${Math.round(remaining(totals.proteinG,targets.proteinG))}g to example target`:"No confirmed meal observations"} progress={proteinPct} color="blue"/>
       <SummaryCard icon={Droplets} title="Hydration" value={waterObserved ? `${waterL.toFixed(2).replace(/0$/,"")} / ${targets.hydrationL} L` : "Not recorded"} detail={waterObserved ? `${remaining(waterL,targets.hydrationL).toFixed(2)} L to example target` : "No hydration observation for this date"} progress={waterPct} color="cyan"/>
     </div>
     <div className="dashboard-content"><div className="dashboard-main">
       <div className="mid-grid"><MealTimeline meals={meals} onAdd={onAdd} onView={onViewMeal} onNavigate={navigate}/><NutrientsPanel tab={nutriTab} setTab={setNutriTab} totals={totals} navigate={navigate} targets={targets}/></div>
-      <div className="bottom-grid"><WeeklyCard navigate={navigate}/><GroceryCard groceries={groceries} toggleGrocery={toggleGrocery} tab={groceryTab} setTab={setGroceryTab} navigate={navigate} budget={budget} inventoryPreview={inventoryPreview}/><FamilyCard navigate={navigate} summary={familySummary} budget={budget}/></div>
+      <div className="bottom-grid"><WeeklyCard navigate={navigate} context={context}/><GroceryCard groceries={groceries} toggleGrocery={toggleGrocery} tab={groceryTab} setTab={setGroceryTab} navigate={navigate} budget={budget} inventoryPreview={inventoryPreview}/><FamilyCard navigate={navigate} summary={familySummary} budget={budget}/></div>
     </div><Guide context={context} onNavigate={navigate}/></div>
     </>
     }
@@ -306,7 +318,7 @@ export default function App() {
   useEffect(()=>{if(!notice)return;const id=window.setTimeout(()=>setNotice(null),5000);return()=>window.clearTimeout(id);},[notice]);
   const date=useMemo(()=>{const d=new Date(`${SAMPLE_DATE}T12:00:00Z`);d.setUTCDate(d.getUTCDate()+dayOffset);return d.toLocaleDateString('en-KE',{weekday:'short',month:'short',day:'numeric',year:'numeric',timeZone:'UTC'});},[dayOffset]);
   const activeDate=useMemo(()=>{const d=new Date(SAMPLE_DATE+'T12:00:00Z');d.setUTCDate(d.getUTCDate()+dayOffset);return d.toISOString().slice(0,10);},[dayOffset]);
-  const nav=(id:RouteId)=>{setRoute(id);if(id==='family')setView('family');else if(id==='dashboard')setView('personal');window.location.hash=id==='dashboard'?'#/':'#/'+id;setMobileOpen(false);setShowSearch(false);setProfileOpen(false);};
+  const nav=(id:RouteId)=>{setRoute(id);if(id==='family')setView('family');window.location.hash=id==='dashboard'?'#/':'#/'+id;setMobileOpen(false);setShowSearch(false);setProfileOpen(false);};
   const toggleGrocery=(id:string)=>setShoppingList(prev=>({...prev,lines:prev.lines.map(l=>l.id===id&&!l.received?{...l,purchased:!l.purchased,paidKes:l.purchased?null:l.paidKes}:l)}));
   const dashboardGroceries:GroceryItem[]=shoppingList.lines.map(l=>{
     const f=sampleFoodChoices.find(f=>f.id===l.foodId);

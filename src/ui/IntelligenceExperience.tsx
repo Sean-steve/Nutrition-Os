@@ -11,7 +11,7 @@ import {answerGuided,deriveInsights,loggedOnDate,previewCandidates} from '../dom
 import {DEFAULT_PROFILE,DEFAULT_TARGETS,observedDays} from '../domain/personal';
 import type {FamilyWorkspaceState,HouseholdRole,TaskStatus} from '../domain/family';
 import {addMember,changeMember,familyProjection,memberRole,removeTask,saveTask,setPreferenceSharing} from '../domain/family';
-import {daysUntil,lotBalance} from '../domain/resources';
+import {daysUntil,lotBalance,mondayOf} from '../domain/resources';
 import './intelligence.css';
 
 export type IntelligenceRoute='insights'|'assistant'|'family';
@@ -57,7 +57,7 @@ function InsightsPage({p}:{p:IntelligenceProps}){
   const helpful=p.feedback.filter(f=>f.status==='helpful').length;
   const visible=insights.filter(i=>(category==='all'||i.kind===category)&&(includeDismissed||!p.feedback.some(f=>f.insightId===i.id&&f.status==='dismissed')));
   const summary=records.length>=3?records.reduce((s,d)=>s+d.proteinG,0)/records.length:null;
-  const selectedPlan=p.context.plans.find(x=>x.weekStart<=p.context.asOf&&x.weekStart>=p.context.asOf.slice(0,7)+'-01');
+  const selectedPlan=p.context.plans.find(x=>x.weekStart===mondayOf(p.context.asOf));
   return <div className="in-page"><Header icon={BarChart3} kicker="NUTRITION INTELLIGENCE" title="Understand the patterns. Choose the next action." desc="Explainable insights from observed example meals, approved plans and shared food resources—never synthetic health predictions." actions={<button className="primary-button" type="button" onClick={()=>p.navigate('assistant')}><Sparkles size={16}/>Ask Nutrition Guide</button>}/>
     <div className="in-stats">
       <div className="panel in-stat"><CalendarDays size={21}/><div><small>Observed dates</small><strong>{records.length}</strong><span>Only dates with logged meals</span></div></div>
