@@ -34,7 +34,7 @@ async function run(){
       if(!role.rows.length)await client.query("CREATE ROLE nutrition_app LOGIN PASSWORD '"+password.replace(/'/g,"''")+"'");
       await client.query('ALTER ROLE nutrition_app NOSUPERUSER NOBYPASSRLS');
       await client.query('GRANT USAGE ON SCHEMA nutrition TO nutrition_app');
-      const rw=['profile','food','recipe','recipe_ingredient','goal','meal','meal_item','meal_plan','planned_meal','inventory_lot','grocery_list','grocery_line','food_budget','idempotency_receipt','event_inbox'];
+      const rw=['profile','food','recipe','recipe_ingredient','goal','meal','meal_item','meal_plan','planned_meal','inventory_lot','grocery_list','grocery_line','food_budget','idempotency_receipt','event_inbox','hydration_day','household','household_member','household_meal','household_task','household_grocery'];
       for(const table of rw)await client.query('GRANT SELECT,INSERT,UPDATE,DELETE ON nutrition.'+table+' TO nutrition_app');
       await client.query('GRANT SELECT,INSERT ON nutrition.inventory_movement TO nutrition_app');
       await client.query('GRANT INSERT ON nutrition.audit_event TO nutrition_app');

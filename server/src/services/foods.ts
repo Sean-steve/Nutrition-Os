@@ -7,11 +7,11 @@ import {foodInput,profileInput,goalInput,recipeInput} from '../domain.js';
 const own=(a:Actor)=>[a.tenantId,a.userId];
 export const notFound=(item:string)=>new ApiError(404,'NOT_FOUND',item+' not found in this workspace.');
 export async function ownedFood(db:SqlClient,a:Actor,id:string){
-  const rows=(await db.query('SELECT * FROM nutrition.food WHERE tenant_id=$1 AND user_id=$2 AND id=$3',[...own(a),id])).rows;
+  const rows=(await db.query('SELECT * FROM nutrition.food WHERE tenant_id=$1 AND user_id=$2 AND id=$3 AND deleted_at IS NULL',[...own(a),id])).rows;
   if(!rows.length)throw notFound('Food');return rows[0];
 }
 export async function getFoods(db:SqlClient,a:Actor,q:string){
-  return (await db.query('SELECT * FROM nutrition.food WHERE tenant_id=$1 AND user_id=$2 AND name ILIKE $3 ORDER BY name LIMIT 80',
+  return (await db.query('SELECT * FROM nutrition.food WHERE tenant_id=$1 AND user_id=$2 AND name ILIKE $3 AND deleted_at IS NULL ORDER BY name LIMIT 80',
     [...own(a),'%'+q.replace(/[\\%_]/g,'\\$&')+'%'])).rows;
 }
 export async function putFood(db:SqlClient,a:Actor,v:z.infer<typeof foodInput>,corr:string){
@@ -39,7 +39,7 @@ export async function putGoal(db:SqlClient,a:Actor,v:z.infer<typeof goalInput>,c
   return row;
 }
 export async function getRecipes(db:SqlClient,a:Actor){
-  const recipes=(await db.query('SELECT * FROM nutrition.recipe WHERE tenant_id=$1 AND user_id=$2 ORDER BY updated_at DESC LIMIT 100',own(a))).rows;
+  const recipes=(await db.query('SELECT * FROM nutrition.recipe WHERE tenant_id=$1 AND user_id=$2 AND deleted_at IS NULL ORDER BY updated_at DESC LIMIT 100',own(a))).rows;
   const ids=recipes.map(r=>r.id);
   const ingredients=(await db.query('SELECT * FROM nutrition.recipe_ingredient WHERE tenant_id=$1 AND user_id=$2 AND recipe_id=ANY($3::uuid[])',[...own(a),ids])).rows;
   return recipes.map(recipe=>({...recipe,ingredients:ingredients.filter(i=>i.recipe_id===recipe.id)}));

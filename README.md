@@ -9,7 +9,8 @@
 - **Phase 3:** Weekly meal plans, generated groceries with pantry deductions, shopping-cost and spending separation, append-only inventory ledger, budget comparisons and waste/expiry tracking — **frontend-only preview**.
 - **Phase 4:** Nutrition intelligence preview and privacy-bounded family command center implemented.
 - **Phase 5:** Real PostgreSQL/Fastify backend with signed identity boundary, domain APIs, tenant RLS, transactions, idempotency, audit and outbox events. **Frontend is not yet connected to the backend.**
-- **Phases 6–8:** Frontend/backend integration, Personal Kernel bridge and production certification are future work.
+- **Phase 6:** Signed-in React workspace connected to PostgreSQL REST APIs, with durable personal and resource workflows and explicit secure family kitchen sharing. The original mock is a **separate preview**, not fallback data.
+- **Phases 7–8:** Personal Kernel identity/consent integrations and production certification remain future work.
 
 ## Local run
 ```sh
@@ -69,3 +70,7 @@ npm --prefix server run dev:token
 ```
 
 The example database passwords and local token workflow are **development-only**. Never run the HTTP server as the PostgreSQL superuser. Live identity relies on Personal Kernel JWKS in future phases, and no backend demo records are seeded. See [Phase 5 delivery](docs/PHASE_5_DELIVERY.md) and [API contracts](docs/PHASE_5_API_CONTRACT.md).
+
+
+### Phase 6 — API-backed Nutrition OS
+Local Vite defaults to authenticated live mode (requires a short-lived local development token from the server); use `?mode=preview` for the original sample frontend. GitHub Pages remains a standalone, labeled sample preview because production Personal Kernel sign-in is not connected. No real account data or JWTs are included in the static build. Run PostgreSQL migrations 001–004 and the independent backend first. See docs/PHASE_6_DELIVERY.md and docs/PHASE_6_API_ADDENDUM.md.
