@@ -9,7 +9,7 @@
     "check": "tsc --noEmit",
     "build": "tsc -p tsconfig.build.json",
     "test": "vitest run --exclude 'src/*.integration.test.ts'",
-    "test:integration": "vitest run src/http.integration.test.ts",
+    "test:integration": "vitest run src/*.integration.test.ts",
     "db:migrate": "tsx src/migrate.ts",
     "dev:token": "tsx src/devToken.ts",
     "events:worker": "tsx src/eventsWorker.ts"
