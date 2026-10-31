@@ -5,6 +5,7 @@ import type {LiveProps,LiveRoute} from './types';
 import {DashboardScreen,ProfileScreen,FoodScreen,RecipeScreen,MealsScreen,ProgressScreen} from './screens/Personal';
 import {PlanScreen,GroceriesScreen,InventoryScreen,BudgetScreen,WasteScreen} from './screens/Resources';
 import {InsightsScreen,GuideScreen,FamilyScreen} from './screens/FamilyInsights';
+import KernelScreen from './KernelScreen';
 
 const snapshot:LiveSnapshot={
  session:{userId:'11111111-1111-4111-8111-111111111111',tenantId:'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',scopes:['nutrition:read','nutrition:write'],identitySource:'development_signed_token'},
@@ -13,7 +14,10 @@ const snapshot:LiveSnapshot={
  progress:{from:'2026-08-01',to:'2026-10-31',observations:[],hydration:[],missingDates:'unknown',disclaimer:'No observed days'},
  state:{date:'2026-10-31',observedMeals:0,observationStatus:'unknown',intake:null,disclaimer:'Missing logs do not imply zero intake.'},
  insight:{date:'2026-10-31',kind:'missing_data',state:{date:'2026-10-31',observedMeals:0,observationStatus:'unknown',intake:null,disclaimer:'unknown'},explanation:'unknown',confidence:'limited',provenance:'unverified_user_food_snapshots'},
- family:{boards:[],invites:[],disclaimer:'No private data shared.'}
+ family:{boards:[],invites:[],disclaimer:'No private data shared.'},
+ kernel:{status:{engineId:'nutrition-os',bridgeConfigured:false,authorityPresent:false,engineState:'UNREGISTERED',
+ active:false,authorityExpiresAt:null,grants:[],liveKernelTransportConnected:false,notice:'No Kernel authority'},
+ context:{context:{},sources:[],notice:'No external projection'},proposals:[]}
 };
 const navigation=vi.fn();
 const fakeClient={} as NutritionClient;
@@ -23,7 +27,7 @@ const pages=[
  ['dashboard',DashboardScreen],['onboarding',ProfileScreen],['profile',ProfileScreen],['goals',ProfileScreen],
  ['today',MealsScreen],['meals',MealsScreen],['foods',FoodScreen],['recipes',RecipeScreen],['progress',ProgressScreen],
  ['planner',PlanScreen],['groceries',GroceriesScreen],['inventory',InventoryScreen],['budget',BudgetScreen],
- ['waste',WasteScreen],['insights',InsightsScreen],['assistant',GuideScreen],['family',FamilyScreen]
+ ['waste',WasteScreen],['insights',InsightsScreen],['assistant',GuideScreen],['family',FamilyScreen],['integrations',KernelScreen]
 ] as const;
 describe('Authenticated frontend renders only verified empty API state',()=>{
  it.each(pages)('renders %s with no fabricated data', (name,Component)=>{

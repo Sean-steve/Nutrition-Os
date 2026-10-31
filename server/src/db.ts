@@ -9,7 +9,8 @@ export async function scopedTransaction<T>(pool:Pool,actor:Actor,fn:(db:SqlClien
   try{
     await db.query('BEGIN');
     // Transaction-local settings cannot leak into the next pooled request.
-    await db.query("SELECT set_config('app.tenant_id',$1,true),set_config('app.user_id',$2,true)",[actor.tenantId,actor.userId]);
+    await db.query("SELECT set_config('app.tenant_id',$1,true),set_config('app.user_id',$2,true),set_config('app.kernel_family_required',$3,true)",
+    [actor.tenantId,actor.userId,(process.env.NODE_ENV==='production'||process.env.KERNEL_FAMILY_AUTHORITY_REQUIRED==='true')?'on':'off']);
     const result=await fn(db);
     await db.query('COMMIT');
     return result;

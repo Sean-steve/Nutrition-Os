@@ -1,0 +1,20 @@
+{
+  "id":"nutrition-os",
+  "name":"Nutrition OS — External Engine",
+  "version":"1.0.0",
+  "purpose":"Domain-owned nutritional observations, meal planning, inventory and governed signals.",
+  "owner":"Nutrition OS",
+  "status":"inactive",
+  "capabilities":["nutrition.observation.read_v1","nutrition.schedule.propose_v1","nutrition.kitchen.shared_view_v1"],
+  "dataOwned":["nutrition_profiles","nutrition_meals","nutrition_foods","nutrition_recipes","nutrition_inventory","nutrition_plans"],
+  "eventsPublished":["nutrition.observed_meals_changed.v1","nutrition.hydration_observed.v1","nutrition.schedule_proposed.v1"],
+  "eventsConsumed":["fitness.workout.completed","finance.food_budget.headroom_changed","calendar.nutrition_window.changed","health.nutrition_safety.changed","family.membership.attested","kernel.plan.decision"],
+  "publishedSignals":["nutrition.observed_meals_count","nutrition.logged_energy_kcal","nutrition.logged_protein_g"],
+  "requiredSignals":[],
+  "dependencies":[],
+  "permissions":{
+    "dataRequested":["nutrition.context.fitness","nutrition.context.finance","nutrition.context.calendar","nutrition.context.health","nutrition.context.family"],
+    "dataProvided":["nutrition.signal.publish","nutrition.schedule.propose"],
+    "dataProhibited":["health.raw_records","finance.transactions","family.private_member_records","kernel.human_state.write","kernel.daily_plan.write"]
+  }
+}

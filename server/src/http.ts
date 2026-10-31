@@ -21,6 +21,10 @@ import {reviseFood,retireFood,reviseRecipe,retireRecipe,getWater,putWater,progre
 import {getSharedBoard,createHousehold,inviteMember,acceptInvite,changeRole,sharePlan,saveTask,addSharedGrocery,checkSharedGrocery,
  householdCreate,memberInvite,memberRoleUpdate,householdTaskInput,householdGroceryInput,groceryCheckedInput,houseId,houseMemberId,houseItemId,sharePlanInput,acceptInviteInput
 } from './services/household.js';
+import {kernelAuthority,kernelEvent,scheduleProposal} from './kernel/contracts.js';
+import {verifyKernelBridge,bridgeConfigured} from './kernel/identity.js';
+import {assertAuthority,getStatus,getContext,getProposals,addProposal} from './kernel/services.js';
+import {consumeKernelEvent} from './kernel/inbound.js';
 
 declare module 'fastify' {interface FastifyRequest {nutritionActor?:Actor;}}
 type Response={status:number;body:unknown};
@@ -86,7 +90,9 @@ export async function buildApp(opts:{pool:Pool;config:Config}){
     reply.code(status).send({error:{code,message,correlationId:correlation(req)}});
   });
   app.addHook('onRequest',async req=>{
-    if(req.url.split('?')[0].startsWith(version+'/'))req.nutritionActor=await verifyActor(req,config);
+    const path=req.url.split('?')[0];
+    const servicePath=path===version+'/kernel/authority'||path===version+'/kernel/events';
+    if(path.startsWith(version+'/')&&!servicePath)req.nutritionActor=await verifyActor(req,config);
   });
   app.get('/health/live',async()=>({status:'alive',service:'nutrition-os-api'}));
   app.get('/health/ready',async(_req,reply)=>{
@@ -286,6 +292,30 @@ export async function buildApp(opts:{pool:Pool;config:Config}){
   app.patch(version+'/family/:id/groceries/:itemId',async(req,reply)=>{
     const {id,itemId}=parse(houseItemId,req.params),v=parse(groceryCheckedInput,req.body);
     const r=await mutate(pool,req,'nutrition:household:write',(db,a,c)=>checkSharedGrocery(db,a,id,itemId,v.checked,c),200);return reply.code(r.status).send(r.body);
+  });
+  // Phase 7 — independently verified Kernel service assertions and personal read models.
+  app.get(version+'/kernel/status',async req=>({data:await read(pool,req,'nutrition:read',
+    (db,a)=>getStatus(db,a,bridgeConfigured(config)))}));
+  app.get(version+'/kernel/context',async req=>({data:await read(pool,req,'nutrition:read',
+    (db,a)=>getContext(db,a))}));
+  app.get(version+'/kernel/proposals',async req=>({data:await read(pool,req,'nutrition:read',
+    (db,a)=>getProposals(db,a))}));
+  app.post(version+'/kernel/proposals',async(req,reply)=>{
+    const v=parse(scheduleProposal,req.body);
+    const r=await mutate(pool,req,'nutrition:plans:write',(db,a,c)=>addProposal(db,a,v,c));
+    return reply.code(r.status).send(r.body);
+  });
+  app.post(version+'/kernel/authority',async(req,reply)=>{
+    const actor=await verifyKernelBridge(req,config,'nutrition:kernel:govern');
+    const v=parse(kernelAuthority,req.body);
+    const result=await scopedTransaction(pool,{...actor,scopes:actor.scopes},db=>assertAuthority(db,actor,v));
+    return reply.code(200).send({data:result});
+  });
+  app.post(version+'/kernel/events',async(req,reply)=>{
+    const actor=await verifyKernelBridge(req,config,'nutrition:kernel:event');
+    const v=parse(kernelEvent,req.body);
+    const result=await scopedTransaction(pool,{...actor,scopes:actor.scopes},db=>consumeKernelEvent(db,actor,v));
+    return reply.code(result.duplicate?200:202).send({data:result});
   });
   return app;
 }

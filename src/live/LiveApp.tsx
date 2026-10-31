@@ -11,6 +11,7 @@ import {isLiveRoute,type LiveRoute,type LiveProps} from './types';
 import {DashboardScreen,ProfileScreen,FoodScreen,RecipeScreen,MealsScreen,ProgressScreen} from './screens/Personal';
 import {PlanScreen,GroceriesScreen,InventoryScreen,BudgetScreen,WasteScreen} from './screens/Resources';
 import {InsightsScreen,GuideScreen,FamilyScreen} from './screens/FamilyInsights';
+import KernelScreen from './KernelScreen';
 import './live.css';
 
 const mainNav=[
@@ -48,7 +49,7 @@ function SignIn({onSignIn,onPreview}:{onSignIn:(token:string)=>void;onPreview:()
      <label className="lv-field"><span>Signed local development token</span><textarea value={value} rows={3} onChange={e=>setValue(e.target.value)} placeholder="Paste the token from npm --prefix server run dev:token" required autoComplete="off" spellCheck={false}/></label>
      <button type="submit" className="primary-button" disabled={!value.trim()}><LockKeyhole size={16}/> Open development workspace</button>
      <div className="lv-note"><ShieldCheck size={17}/><div><strong>Local development only</strong><p>JWT stays in React memory and expires. It is never persisted, placed in a URL, or sent to GitHub Pages. Generate tokens with the local backend command.</p></div></div>
-   </form>:<div className="lv-note warn"><AlertTriangle size={18}/><div><strong>Verified identity provider not connected</strong><p>Production access requires Personal Kernel sign-in and a configured HTTPS API. Pasting credentials into an untrusted static site is disabled. The live workspace cannot be unlocked here until Phase 7 identity is configured.</p></div></div>}
+   </form>:<div className="lv-note warn"><AlertTriangle size={18}/><div><strong>Verified identity provider not connected</strong><p>Production access requires Personal Kernel sign-in and a configured HTTPS API. Pasting credentials into an untrusted static site is disabled. The live workspace cannot be unlocked until HumanKernelOS provisions its identity issuer and an authorized token exchange.</p></div></div>}
    <div className="lv-login-actions"><button className="outlined-button" type="button" onClick={onPreview}>Open sample UI preview <ArrowRight size={15}/></button><span>API: {origin||'same-origin /api proxy'}</span></div>
  </section></div>;
 }
@@ -56,7 +57,7 @@ function OtherPage({p}:{p:LiveProps}){
  if(p.route==='privacy')return <div className="lv-page"><Head icon={ShieldCheck} title="Privacy and Data Authority" tag="GOVERNANCE" description="Authenticated records are scoped to your verified token and database identity."/>
   <section className="panel lv-panel"><h2>Your signed workspace</h2><p>Subject: {p.data.session.userId}</p><p>Tenant: {p.data.session.tenantId}</p><p>Verification: {p.data.session.identitySource}</p>
    <p>Personal meals, goals and nutrition details are separate from shared family kitchen logistics. Only accepted household members can view sanitized shared boards. No data is automatically published.</p>
-   <div className="lv-note"><LockKeyhole size={18}/><div><strong>Account deletion and consent export are not certified yet.</strong><p>Kernel-managed consent, full data export/erasure and production security controls are Phase 7–8 gates.</p></div></div></section></div>;
+   <div className="lv-note"><LockKeyhole size={18}/><div><strong>Account deletion and consent export are not certified yet.</strong><p>Kernel-signed consent assertions are supported but require actual deployment. Full data export/erasure and production security certification remain outstanding.</p></div></div></section></div>;
  return <div className="lv-page"><Head icon={Signpost} title="Integrations" tag="EXTERNAL AUTHORITY" description="Nutrition OS does not impersonate other engines."/>
   <section className="panel lv-panel"><Empty title="No external engines connected" description="Personal Kernel identity, Family OS membership, Finance OS transactions, Health OS records and Fitness/Calendar projections require explicit contracts, consent and production identity. No demo integration is presented as real."/></section></div>;
 }
@@ -76,6 +77,7 @@ function CurrentScreen(p:LiveProps){
  case 'insights':return <InsightsScreen p={p}/>;
  case 'assistant':return <GuideScreen p={p}/>;
  case 'family':return <FamilyScreen p={p}/>;
+ case 'integrations':return <KernelScreen p={p}/>;
  default:return <OtherPage p={p}/>;
  }
 }
@@ -156,7 +158,7 @@ export default function LiveApp({onPreview}:ModeProps){
         {error&&<div className="lv-error" role="alert"><AlertTriangle size={18}/><span>{error}</span><button type="button" onClick={()=>setError('')} aria-label="Dismiss error"><X size={16}/></button></div>}
         {success&&<div className="lv-success" role="status"><CheckCircle2 size={18}/>{success}<button type="button" onClick={()=>setSuccess('')} aria-label="Dismiss message"><X size={16}/></button></div>}
         {busy&&!data?<Loading/>:offline?<section className="panel lv-panel"><Empty title="Nutrition API unavailable" description="No private data was loaded. Verify the server, token, network, PostgreSQL migrations and allowed origin before retrying." action={<button type="button" className="outlined-button" disabled={busy} onClick={()=>setRefresh(n=>n+1)}>Retry connection <ArrowRight size={15}/></button>}/></section>:data&&props?<CurrentScreen {...props}/>:<Loading/>}
-        <footer className="page-footer">Nutrition OS · Phase 6 API-connected workspace <span>Logged facts only · Incomplete observations are unknown · Not medical advice</span></footer>
+        <footer className="page-footer">Nutrition OS · Phase 7 governed engine integration boundary <span>Logged facts only · Incomplete observations are unknown · Not medical advice</span></footer>
       </main>
     </div>
   </div>;

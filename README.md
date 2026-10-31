@@ -10,7 +10,8 @@
 - **Phase 4:** Nutrition intelligence preview and privacy-bounded family command center implemented.
 - **Phase 5:** Real PostgreSQL/Fastify backend with signed identity boundary, domain APIs, tenant RLS, transactions, idempotency, audit and outbox events. **Frontend is not yet connected to the backend.**
 - **Phase 6:** Signed-in React workspace connected to PostgreSQL REST APIs, with durable personal and resource workflows and explicit secure family kitchen sharing. The original mock is a **separate preview**, not fallback data.
-- **Phases 7–8:** Personal Kernel identity/consent integrations and production certification remain future work.
+- **Phase 7 (engine boundary):** Verified Kernel-service JWT ingress, expiring signed authority/consent, governed projections, Family OS attestations and DOP proposals implemented. **Real HOS deployment, cross-service token exchange and Event Mesh delivery are not yet connected.**
+- **Phase 8:** Production security, browser/system certification, infrastructure and release assurance remain outstanding.
 
 ## Local run
 ```sh
@@ -74,3 +75,10 @@ The example database passwords and local token workflow are **development-only**
 
 ### Phase 6 — API-backed Nutrition OS
 Local Vite defaults to authenticated live mode (requires a short-lived local development token from the server); use `?mode=preview` for the original sample frontend. GitHub Pages remains a standalone, labeled sample preview because production Personal Kernel sign-in is not connected. No real account data or JWTs are included in the static build. Run PostgreSQL migrations 001–004 and the independent backend first. See docs/PHASE_6_DELIVERY.md and docs/PHASE_6_API_ADDENDUM.md.
+
+### Phase 7 — Kernel governance & external engine boundary
+The Nutrition backend now supports a distinct signed Kernel machine-service JWT trust root (not a local user token), persisted ENABLED/RUNNING lifecycle and expiring consent scopes, a strict source-event inbox, consented cross-engine context, Family OS member attestations and Kernel-governed schedule proposals. Apply migration 005 before running the updated backend.
+
+**The HOS-side live services are not deployed in this repository.** Until HOS provides its service JWKS, installed external engine registry adapter, authorized event ingress and user token exchange, no claims of live external integration are made. The original HOS internal Nutrition Engine still requires explicit migration/deprecation to avoid duplicate nutrition ownership.
+
+Configure KERNEL_BRIDGE_JWKS_URL, KERNEL_BRIDGE_ISSUER and KERNEL_BRIDGE_AUDIENCE together only when a genuinely trusted short-lived service signing authority is provisioned. Never use a dev token or browser-stored secret as an integration credential. See [Phase 7 architecture, security and blockers](docs/PHASE_7_KERNEL_INTEGRATION.md) and the [installable manifest target](docs/nutrition-os.hos-manifest.json).
