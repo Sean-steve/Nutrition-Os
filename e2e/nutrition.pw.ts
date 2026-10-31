@@ -12,9 +12,16 @@ async function openWorkspace(page:import('@playwright/test').Page){
  await expect(page.locator('.lv-live-tag')).toBeVisible({timeout:30000});
 }
 async function navigate(page:import('@playwright/test').Page,name:string){
- const button=page.getByRole('button',{name,exact:true});
- if(!await button.isVisible())await page.getByRole('button',{name:'Open navigation'}).click();
- await page.getByRole('button',{name,exact:true}).click();
+ // CSS-transformed offscreen mobile links still count as "visible" in Playwright.
+ // Always open the hamburger at the mobile breakpoint before clicking a link.
+ const hamburger=page.getByRole('button',{name:'Open navigation'});
+ if(await hamburger.isVisible()){
+  await hamburger.click();
+  await expect(page.locator('.sidebar.open')).toBeVisible();
+ }
+ const link=page.getByRole('button',{name,exact:true});
+ await link.scrollIntoViewIfNeeded({timeout:8000});
+ await link.click({timeout:8000});
 }
 test('static preview remains visibly sample-only',async({page})=>{
  await page.goto('/?mode=preview');
