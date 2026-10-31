@@ -140,7 +140,7 @@ export async function certifyStaging(env=process.env,options={}){
     'One signed synthetic food was written, deduplicated and soft-retired; no user content exported');
   }catch(e){proof.gates.synthetic_write_idempotency=safeGate('blocked',e.code??'SYNTHETIC_WORKFLOW_FAILED');}
  }else proof.gates.synthetic_write_idempotency=safeGate('blocked',
-  'Requires explicit synthetic account and mutation authorization; cannot operate on a real person's records');
+  'Requires explicit synthetic account and mutation authorization; cannot operate on real-user records');
  proof.gates.family_authority=safeGate('blocked',
   'Signed external Family OS membership acceptance/revocation E2E proof not supplied');
  proof.gates.privacy_and_safety=safeGate('blocked',
