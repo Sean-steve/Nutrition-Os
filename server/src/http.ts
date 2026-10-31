@@ -72,7 +72,7 @@ export async function buildApp(opts:{pool:Pool;config:Config}){
     let status=500,code='INTERNAL_ERROR',message='An unexpected error occurred.';
     if(error instanceof ApiError){status=error.statusCode;code=error.code;message=error.message;}
     else if(error instanceof ZodError){status=422;code='VALIDATION_ERROR';message='Request validation failed.';}
-    else if('code' in error){
+    else if(error!==null&&typeof error==='object'&&'code' in error){
       const pg=(error as {code?:string}).code;
       if(pg==='23505'){status=409;code='CONFLICT';message='This record already exists.';}
       else if(pg==='23514'||pg==='23503'){status=409;code='INTEGRITY_CONFLICT';message='The requested change violates an ownership or resource constraint.';}
