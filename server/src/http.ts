@@ -93,6 +93,11 @@ export async function buildApp(opts:{pool:Pool;config:Config}){
     try{await pool.query('SELECT 1');return {status:'ready',database:true};}
     catch{reply.code(503);return {status:'unavailable',database:false};}
   });
+  app.get(version+'/session',async req=>{
+    const actor=actorOf(req);requireScope(actor,'nutrition:read');
+    return {data:{userId:actor.userId,tenantId:actor.tenantId,
+      scopes:[...actor.scopes].sort(),identitySource:config.localIdentityEnabled?'development_signed_token':'kernel_verified_jwks'}};
+  });
   app.get(version+'/profile',async req=>({data:await read(pool,req,'nutrition:read',(db,a)=>getProfile(db,a))}));
   app.put(version+'/profile',async(req,reply)=>{
     const v=parse(profileInput,req.body);const r=await mutate(pool,req,'nutrition:profile:write',(db,a,c)=>putProfile(db,a,v,c),200);return reply.code(r.status).send(r.body);
