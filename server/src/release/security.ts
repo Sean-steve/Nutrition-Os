@@ -24,8 +24,8 @@ export function productionConfigBlockers(config:Config):string[]{
    return u.protocol!=='https:'||u.pathname!=='/'||u.search!==''||u.hash!==''||x==='*';
   }catch{return true;}}))
   failed.push('Explicit HTTPS-only CORS origin allowlist required.');
- if(config.databaseUrl===config.migrationDatabaseUrl)
-  failed.push('HTTP pool and privileged migration database identities must be distinct.');
+ if(config.databaseUrl!==config.migrationDatabaseUrl)
+  failed.push('The running HTTP process must not receive a separate privileged migration database secret. Run migrations using an isolated job.');
  if(/nutrition_dev_only|nutrition_dev_admin|password=|localhost|127\.0\.0\.1/i.test(config.databaseUrl))
   failed.push('Application database connection cannot use local development examples.');
  if(/nutrition_dev_only|nutrition_dev_admin/i.test(config.migrationDatabaseUrl))
