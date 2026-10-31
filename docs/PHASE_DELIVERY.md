@@ -58,3 +58,10 @@
 - Only user-entered observations appear in signed-in state; no synthetic personal data is imported or used on errors.
 - The original Pages experience remains an explicitly labeled demo, with no live API claims.
 - See PHASE_6_DELIVERY.md and PHASE_6_API_ADDENDUM.md for workflows, identities, limitations and local setup.
+
+## Phase 7 — HumanKernelOS external-engine contract and governance
+- Migration 005: consent/lifecycle binding, minimal inbound projection cache, signed Family OS membership attestation and Kernel-only schedule decision state, all subject/tenant RLS.
+- Distinct RS256/ES256 short-lived service identity; signed HOS authority and strict inbound event APIs. Legacy local nutrition user JWTs cannot enable engine lifecycle or consent.
+- Projections, permissions and status exposed to a premium authenticated integration view. Unverified external context is not fabricated. Observed-only outbound envelope projector and pending schedule intents are implemented without claiming a real Event Mesh transport.
+- Automated real PostgreSQL and ephemeral RS256 JWKS tests check wrong audience, stale grant, scope gating, inbox duplicates, cross-user isolation, family revocation, schedule decisions and payload minimization.
+- Full HOS installation, real OIDC/JWKS exchange, HOS outbound event receipt, Family OS source of truth and cross-engine deployments remain explicit blockers. See PHASE_7_KERNEL_INTEGRATION.md.
