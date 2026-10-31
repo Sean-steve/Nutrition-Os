@@ -61,10 +61,6 @@ jobs:
         run: |
           npm audit --omit=dev --audit-level=high
           npm --prefix server audit --omit=dev --audit-level=high
-      - name: Install PostgreSQL restore tools
-        run: |
-          sudo apt-get update -qq
-          sudo apt-get install -y -qq postgresql-client
       - name: Disposable backup and actual database restore drill
         run: bash scripts/backup-restore-ci.sh
       - name: Machine-readable release readiness gate (expected NOT READY)
