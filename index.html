@@ -1,0 +1,70 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="theme-color" content="#082f28"><meta name="description" content="Nutrition OS — personal and family nutrition command center.">
+  <title>Nutrition OS · Command Center</title>
+  <link rel="stylesheet" href="./assets/styles.css">
+</head>
+<body>
+<div class="app">
+  <aside class="sidebar" aria-label="Main navigation">
+    <a href="#dashboard" class="brand" aria-label="Nutrition OS dashboard"><span class="brand-mark">❧</span><span><strong>Nutrition OS</strong><small>Eat · Plan · Live Better</small></span></a>
+    <nav id="navigation" class="nav">
+      <a class="nav-item active" href="#dashboard" data-page="Dashboard"><span>⌂</span>Dashboard</a>
+      <a class="nav-item" href="#today" data-page="Today"><span>▣</span>Today <em>Soon</em></a>
+      <a class="nav-item" href="#meals" data-page="Meals"><span>♧</span>Meals <em>Soon</em></a>
+      <a class="nav-item" href="#planner" data-page="Meal Planner"><span>▦</span>Meal Planner <em>Soon</em></a>
+      <a class="nav-item" href="#foods" data-page="Foods & Recipes"><span>◈</span>Foods & Recipes <em>Soon</em></a>
+      <a class="nav-item" href="#groceries" data-page="Groceries"><span>▤</span>Groceries <em>Soon</em></a>
+      <a class="nav-item" href="#inventory" data-page="Inventory"><span>▣</span>Inventory <em>Soon</em></a>
+      <a class="nav-item" href="#goals" data-page="Goals"><span>◎</span>Goals <em>Soon</em></a>
+      <a class="nav-item" href="#insights" data-page="Insights"><span>▥</span>Insights <em>Soon</em></a>
+      <a class="nav-item" href="#progress" data-page="Progress"><span>↗</span>Progress <em>Soon</em></a>
+      <a class="nav-item" href="#family" data-page="Family"><span>♧</span>Family <em>Soon</em></a>
+    </nav>
+    <div class="side-secondary"><div class="side-label">WORKSPACE</div><a href="#guide" class="nav-item" data-page="AI Nutrition Guide"><span>✧</span>AI Nutrition Guide</a><a href="#integrations" class="nav-item" data-page="Integrations"><span>⛓</span>Integrations <em>Soon</em></a><a href="#privacy" class="nav-item" data-page="Privacy & Sharing"><span>◇</span>Privacy & Sharing <em>Soon</em></a><a href="#settings" class="nav-item" data-page="Settings"><span>⚙</span>Settings <em>Soon</em></a></div>
+    <div class="focus-card"><div>✳ &nbsp; My Nutrition Focus</div><strong>Performance & Health</strong><div class="focus-progress"><i></i></div><small>Example goal progress · 84%</small></div>
+  </aside>
+  <div class="workspace">
+    <header class="topbar">
+      <button id="menuToggle" class="icon-button menu-toggle" aria-label="Open navigation" aria-expanded="false">☰</button>
+      <form id="searchForm" class="search"><span>⌕</span><input type="search" id="searchInput" placeholder="Search foods, recipes, meals or ask anything…" aria-label="Search demonstration foods"><kbd>/</kbd></form>
+      <div class="top-actions"><button id="previousDay" class="icon-button" aria-label="Previous day">‹</button><span id="dateLabel" class="date-label">Today</span><button id="nextDay" class="icon-button" aria-label="Next day">›</button><span class="bar-divider"></span><button class="icon-button" id="notificationButton" aria-label="Notifications">♧<b class="badge">2</b></button><div class="avatar">S</div><div class="profile-name"><b>Personal view</b><small>Preview workspace</small></div></div>
+    </header>
+    <main class="content" id="dashboard">
+      <div class="preview-banner"><strong>DESIGN PREVIEW</strong><span>All nutrition values and family profiles below are illustrative—not personal records or clinical assessments.</span></div>
+      <div class="intro"><div><span class="eyebrow">YOUR DAILY NUTRITION</span><h1>Good morning <span class="wave">✳</span></h1><p>Here's your nutrition picture today.</p></div><div class="intro-quote">❧ <span>Consistent nutrition fuels a stronger you.</span></div></div>
+      <div class="dashboard-grid">
+        <div class="left-area">
+          <section class="metrics" aria-label="Daily nutrition overview">
+            <article class="metric metric-status"><div class="ring status-ring" style="--value:78;--ring-color:#27b56a"><div>78<small>%</small></div></div><div><span class="metric-label">Nutrition coverage</span><strong class="green-text">On track</strong><small>Example logged-intake coverage, not a clinical score.</small></div></article>
+            <article class="metric"><div class="metric-icon fire">♨</div><span class="metric-label">Energy</span><strong>1,840 <span>/ 2,300 kcal</span></strong><div class="bar"><i style="--pct:80%;--bar:#faa721"></i></div><small>460 kcal remaining</small></article>
+            <article class="metric"><div class="metric-icon blue">⌁</div><span class="metric-label">Protein</span><strong>82 <span>/ 140 g</span></strong><div class="bar"><i style="--pct:59%;--bar:#529cf1"></i></div><small>58 g remaining</small></article>
+            <article class="metric"><div class="metric-icon water">●</div><span class="metric-label">Hydration</span><strong>1.7 <span>/ 2.5 L</span></strong><div class="bar"><i style="--pct:68%;--bar:#65b8ff"></i></div><small>0.8 L remaining</small></article>
+          </section>
+          <div class="middle-grid">
+            <section class="panel meals-panel"><div class="panel-heading"><h2>Today's Meals</h2><button class="text-button" data-preview="Today" type="button">View details →</button></div><div id="mealsList" class="meals-list"></div><div class="hint"><span>💡</span><div><strong>Your example day has 58g protein remaining.</strong><small>A protein-rich dinner can contribute toward the target.</small></div><button type="button" data-recommendation="true">Options →</button></div></section>
+            <div class="stacked">
+              <section class="panel nutrients-panel"><div class="panel-heading"><h2>Key Nutrients</h2><button class="text-button" data-preview="Nutrients" type="button">View all →</button></div><div class="segmented" id="nutrientTabs"><button class="selected" data-tab="macros">Macros</button><button data-tab="micro">Micronutrients</button><button data-tab="other">Other</button></div><div id="nutrients" class="nutrient-rings"></div></section>
+              <section class="panel goals-panel"><div class="panel-heading"><h2>Nutrition Goals</h2><button class="text-button" data-preview="Goals" type="button">View goals →</button></div><div class="goal-row"><span>⌁</span><label>Daily protein target</label><div class="bar"><i style="--pct:59%;--bar:#32b96d"></i></div><b>59%</b></div><div class="goal-row"><span>♨</span><label>Energy range</label><div class="bar"><i style="--pct:80%;--bar:#f7a928"></i></div><b>80%</b></div><div class="goal-row"><span>◎</span><label>Meal consistency</label><div class="bar"><i style="--pct:67%;--bar:#32b96d"></i></div><b>67%</b></div><div class="goal-row"><span>❧</span><label>Vegetable intake</label><div class="bar"><i style="--pct:60%;--bar:#32b96d"></i></div><b>60%</b></div></section>
+            </div>
+          </div>
+          <div class="bottom-grid">
+            <section class="panel weekly-panel"><div class="panel-heading"><h2>This Week</h2><button class="text-button" data-preview="Progress" type="button">View week →</button></div><div class="week-days"><div>Mon<b class="complete">✓</b></div><div>Tue<b class="complete">✓</b></div><div>Wed<b class="half">◐</b></div><div>Thu<b>○</b></div><div>Fri<b>○</b></div><div>Sat<b>○</b></div><div>Sun<b>○</b></div></div><div class="mini-stats"><div><strong>82%</strong><small>Goal alignment</small></div><div><strong>4 / 7</strong><small>Meal consistency</small></div><div><strong>KES 4,850</strong><small>Example groceries</small></div></div></section>
+            <section class="panel grocery-panel"><div class="panel-heading"><h2>Grocery & Inventory</h2><button class="text-button" data-preview="Groceries" type="button">View all →</button></div><div class="segmented compact" id="resourceTabs"><button class="selected" data-resource="grocery">Grocery list</button><button data-resource="inventory">Inventory</button></div><div id="resourceList"></div><div class="grocery-footer"><span><small>Estimated grocery total</small><strong>KES 4,850</strong><small>Illustrative budget: KES 5,500</small></span><button class="primary-button" id="optimizeButton">Optimize list →</button></div></section>
+          </div>
+        </div>
+        <aside class="right-area">
+          <section class="panel guide" id="guide"><div class="guide-heading"><h2>❧ &nbsp; AI Nutrition Guide</h2><span>Preview</span></div><div class="guide-body"><h3>You're 58g short of the example protein target.</h3><p>Here are meal ideas based on the sample foods and budget. Values are estimates.</p><div class="recommendations" id="recommendations"></div><button class="primary-button full" id="moreRecommendations">Explore dinner options →</button><form class="ask-form" id="askForm"><input id="askInput" aria-label="Ask Nutrition Guide" placeholder="Ask about this sample day…"><button type="submit" aria-label="Ask">➜</button></form><div class="prompt-pills"><button data-question="How much protein remains?">Protein gap</button><button data-question="What could I eat for dinner?">Dinner ideas</button><button data-question="What's my grocery estimate?">Grocery budget</button></div><p class="guide-disclaimer">Preview responses use predefined examples. No AI provider or health data is connected.</p></div></section>
+          <section class="panel family-panel"><div class="panel-heading"><h2>Family Nutrition</h2><button class="text-button" data-preview="Family" type="button">View family →</button></div><p class="muted">Illustrative household plan. Individual data remains private by default.</p><div class="family-members"><div><span class="member-avatar a1">A</span><strong>Member A</strong><small>Meal ready</small></div><div><span class="member-avatar a2">B</span><strong>Member B</strong><small>Meal ready</small></div><div><span class="member-avatar a3">C</span><strong>Member C</strong><small>Needs review</small></div></div><div class="family-alert">◎ &nbsp; Shared dinner ingredients are available in the example inventory.</div></section>
+        </aside>
+      </div>
+      <footer>Nutrition OS · Phase 1 visual prototype · Not medical advice · No live data connections</footer>
+    </main>
+  </div>
+</div>
+<div id="toast" class="toast" role="status" aria-live="polite"></div>
+<dialog id="detailDialog" class="detail-dialog"><div class="dialog-header"><h2 id="dialogTitle">Preview</h2><button id="closeDialog" class="icon-button" aria-label="Close">×</button></div><div id="dialogBody"></div><button class="primary-button" id="dialogCloseButton">Got it</button></dialog>
+<script src="./assets/app.js" defer></script>
+</body></html>
