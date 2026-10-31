@@ -57,7 +57,7 @@ export const sampleRoadmap: Record<string, { phase: string; description: string;
   insights: { phase: 'Phase 4', description: 'Explainable nutrition trends and recommendations.', highlights: ['Pattern detection', 'Recommendation evidence', 'Confidence and uncertainty'] },
   progress: { phase: 'Phase 2', description: 'Daily, weekly and monthly nutrition progress.', highlights: ['Nutrient trends', 'Consistency', 'Personal reviews'] },
   family: { phase: 'Phase 4', description: 'Household nutrition without leaking private member health data.', highlights: ['Shared meal plan', 'Shared groceries', 'Household cost & inventory'] },
-  assistant: { phase: 'Phase 4', description: 'Policy-controlled conversational nutrition assistant.', highlights: ['Explainable responses', 'Permission-bound tools', 'Safety checks'] },
+  assistant: { phase: 'Phase 4', description: 'Deterministic nutrition guide preview; no live AI model.', highlights: ['Read-only context responses', 'Safety gate for clinical topics', 'Explainable sources'] },
   integrations: { phase: 'Phase 7', description: 'Authorized communication with Personal Kernel engines.', highlights: ['Kernel identity', 'Finance/Fitness/Calendar signals', 'Consent-led contracts'] },
   privacy: { phase: 'Phase 7', description: 'User data sovereignty and consent controls.', highlights: ['Permission center', 'Data export & erasure', 'Audit trail'] },
   onboarding: { phase: 'Phase 2', description: 'Three-step personal nutrition setup.', highlights: ['Personal preferences', 'Explicit example targets', 'No account created'] },

@@ -12,7 +12,7 @@ import {
   clampProgress, formatKes, remaining, type FoodChoice, type GroceryItem, type MealRecord, type MealSlot,
 } from '../domain/nutrition';
 import {
-  SAMPLE_DATE, sampleFoodChoices, sampleMeals, sampleRecommendations,
+  SAMPLE_DATE, sampleFoodChoices, sampleMeals,
   sampleRoadmap, sampleWeeklyProgress,
 } from '../data/sample';
 import { DEFAULT_PROFILE, DEFAULT_TARGETS, mealsOnDate, type NutritionProfile, type NutritionTargets, type RecipeRecord } from '../domain/personal';
@@ -22,6 +22,10 @@ import ResourceExperience, { type ResourceRoute } from './ResourceExperience';
 import { sampleWeeklyPlan, sampleInventoryLots, sampleStockMovements, sampleGroceriesGenerated, sampleUnitPricesKes, sampleFoodBudgetKes } from '../data/resourceFixtures';
 import { appendMovement, generateGroceries, isoDate, lotBalance, transferStock, type WeeklyPlan, type GroceryList, type InventoryLot, type ShoppingLine, type StockMovement, type StorageLocation } from '../domain/resources';
 import { recipeAmount } from '../domain/personal';
+import { deriveInsights, previewCandidates, answerGuided, type DecisionContext, type InsightFeedback } from '../domain/intelligence';
+import { familyProjection, type FamilyWorkspaceState, type PublicFamilySummary } from '../domain/family';
+import { sampleFamilyWorkspace } from '../data/intelligenceFixtures';
+import IntelligenceExperience, { type IntelligenceRoute } from './IntelligenceExperience';
 
 type RouteId = 'dashboard' | keyof typeof sampleRoadmap;
 type NutriTab = 'macros' | 'micros' | 'other';
@@ -149,48 +153,59 @@ function GroceryCard({ groceries, toggleGrocery, tab, setTab, navigate, budget, 
   </section>;
 }
 
-function FamilyCard({ navigate }: { navigate: (id:RouteId)=>void }) {
-  return <section className="panel family-panel"><CardHeading title="Family nutrition" action="Family center" onAction={()=>navigate('family')}/>
-    <div className="family-summary-grid"><div><span className="family-icon green">🍽️</span><b>5 / 7</b><small>Shared dinners planned</small></div><div><span className="family-icon peach">🛒</span><b>6 items</b><small>Household groceries</small></div><div><span className="family-icon blue">💰</span><b>KES 5,500</b><small>Example grocery budget</small></div></div>
-    <div className="family-safe"><LockKeyhole size={16}/><span>Household logistics only. Individual nutrition data stays private.</span></div>
+function FamilyCard({navigate,summary,budget}:{navigate:(id:RouteId)=>void;summary:PublicFamilySummary;budget:number}){
+  return <section className="panel family-panel">
+    <CardHeading title="Family Nutrition" action="Family command" onAction={()=>navigate('family')}/>
+    <div className="family-summary-grid">
+      <div><span className="family-icon green">🍲</span><small>Shared meal plan</small><strong>{summary.plannedMealCount} approved</strong></div>
+      <div><span className="family-icon peach">🛒</span><small>Grocery list</small><strong>{summary.sharedGroceryCount} items</strong></div>
+      <div><span className="family-icon blue">💳</span><small>Example budget</small><strong>{formatKes(budget)}</strong></div>
+    </div>
+    <div className="privacy-strip"><ShieldCheck size={18}/><div><strong>Shared resources only</strong><p>No family member's personal nutrient status or health data is shown.</p></div></div>
+    <button className="text-action" type="button" onClick={()=>navigate('family')}>Open Family Command Center <ArrowRight size={15}/></button>
   </section>;
 }
 
-function Guide({ totalProtein, hasObservations, onPlan, onNavigate, notify, targets }: { totalProtein: number; hasObservations:boolean; targets: NutritionTargets; onPlan: (id: string)=>void; onNavigate: (id:RouteId)=>void; notify: (n:Notice)=>void }) {
-  const [start,setStart]=useState(0);
-  const [input,setInput]=useState('');
+function Guide({context,onNavigate}:{context:DecisionContext;onNavigate:(id:RouteId)=>void}){
+  const [question,setQuestion]=useState('');
   const [reply,setReply]=useState('');
-  const options=[0,1,2].map(i=>sampleRecommendations[(start+i)%sampleRecommendations.length]);
-  const gap=remaining(totalProtein, targets.proteinG);
-  function ask(e:FormEvent<HTMLFormElement>) {
-    e.preventDefault();
-    const q=input.trim();
-    if(!q)return;
-    const lower=q.toLowerCase();
-    if(lower.includes('protein')) setReply(hasObservations?`The sample log has ${Math.round(totalProtein)}g against an illustrative ${targets.proteinG}g target. Incomplete logs do not prove insufficient eating.`:'No logged meals were observed for this date; no intake gap can be inferred.');
-    else if(lower.includes('plan') || lower.includes('dinner')) setReply('You can choose a dinner option above to update the demo plan. Full adaptive planning will arrive in Phase 3.');
-    else if(lower.includes('groc') || lower.includes('inventory')) setReply('The sample basket is under Grocery & Inventory. Real household inventory connections are planned for Phase 3.');
-    else setReply('This is a rule-based dashboard preview, not a connected AI model. The policy-controlled assistant arrives in Phase 4.');
-    setInput('');
+  const ideas=useMemo(()=>previewCandidates(context),[context]);
+  const top=useMemo(()=>deriveInsights(context)[0],[context]);
+  function ask(e:FormEvent<HTMLFormElement>){
+    e.preventDefault();if(!question.trim())return;
+    const result=answerGuided(context,question);
+    setReply(result.title+': '+result.message);
+    setQuestion('');
   }
   return <aside className="guide-panel">
-    <div className="guide-head"><div><Leaf size={22}/><h2>AI Nutrition Guide</h2></div><span className="beta-tag">Preview</span></div>
-    <div className="guide-body"><div className="guide-alert"><span>✦</span><strong>{hasObservations?`About ${Math.round(gap)}g below the sample protein target.`:'No confirmed intake for this date'}</strong></div>
-      <p className="guide-explain">{hasObservations?'Based on this incomplete example meal log, these are dinner ideas, not evidence of a deficiency.':'Planned meals do not establish consumption. Log an observed meal before interpreting a nutrient gap.'} Confirm ingredients, portions and dietary restrictions.</p>
-      <div className="suggestion-list">{options.map((item, idx) => <article className={`suggestion ${idx===0?'featured':''}`} key={item.id}><span className="suggestion-photo">{item.emoji}</span><div className="suggestion-content"><b>{item.title}</b>{idx===0&&<div className="tags">{item.tags.map(t=><span key={t}>{t}</span>)}</div>}<div className="suggestion-meta"><span><Flame size={12}/>{item.energyKcal} kcal</span><span><Activity size={12}/>{item.proteinG}g protein</span><span><Clock size={12}/>{item.minutes} min</span></div></div><button type="button" className="suggestion-select" title={`Review ${item.title} in planner`} aria-label={`Review ${item.title} in planner`} onClick={()=>{onPlan(item.id);notify({title:'Review this dinner',body:`${item.title} is an illustrative suggestion. Choose an available recipe and approve it in the Meal Planner; no meal was silently changed.`});}}><ChevronRight size={18}/></button></article>)}</div>
-      <button className="primary-button guide-generate" type="button" onClick={()=>setStart((start+1)%sampleRecommendations.length)}>Explore more meal ideas <ArrowRight size={16}/></button>
-      <form className="guide-ask" onSubmit={ask}><label htmlFor="guide-query" className="sr-only">Ask about demo nutrition</label><input id="guide-query" value={input} onChange={e=>setInput(e.target.value)} placeholder="Ask about this nutrition preview..." maxLength={180}/><button title="Send preview question" aria-label="Send preview question" type="submit"><Send size={17}/></button></form>
-      {reply && <div className="guide-reply" role="status">{reply}</div>}
-      <div className="guide-shortcuts"><button type="button" onClick={()=>onNavigate('planner')}>Plan meals</button><button type="button" onClick={()=>onNavigate('goals')}>View goals</button><button type="button" onClick={()=>onNavigate('inventory')}>Check inventory</button></div>
-      <p className="guide-disclaimer"><Info size={13}/>Rule-based preview · No live AI or health assessment</p>
+    <div className="guide-head"><div><Leaf size={22}/><h2>Nutrition Intelligence</h2></div><span className="beta-tag">Rule-based preview</span></div>
+    <div className="guide-body">
+      <div className="guide-alert"><span>✦</span><strong>{top?.title??'Evidence matters more than guesses'}</strong></div>
+      <p className="guide-explain">{top?.statement??'No nutrition conclusions without records.'}</p>
+      {top&&<button className="text-action" type="button" onClick={()=>onNavigate('insights')}>Why this appears <ArrowRight size={14}/></button>}
+      <div className="suggestion-list">
+        {ideas.slice(0,3).map((item,i)=><article className={`suggestion ${i===0?'featured':''}`} key={item.id}>
+          <span className="suggestion-photo">{item.emoji}</span>
+          <div className="suggestion-content"><b>{item.title}</b><div className="suggestion-meta"><span><Flame size={12}/>{item.energyKcal} kcal</span><span><Activity size={12}/>{Math.round(item.proteinG)}g protein</span><span><Clock size={12}/>{item.minutes} min</span></div></div>
+          <button type="button" className="suggestion-select" title="Review in planner" aria-label={`Review ${item.title} in planner`} onClick={()=>onNavigate('planner')}><ChevronRight size={18}/></button>
+        </article>)}
+        {!ideas.length&&<div className="guide-reply" role="note">Recipe options withheld or unavailable. Review dietary exclusions and ingredients manually; the sample catalogue does not verify allergens.</div>}
+      </div>
+      <button className="primary-button guide-generate" type="button" onClick={()=>onNavigate('insights')}>Explore explainable insights <ArrowRight size={16}/></button>
+      <form className="guide-ask" onSubmit={ask}><label htmlFor="guide-query" className="sr-only">Ask the guided preview</label>
+        <input id="guide-query" value={question} onChange={e=>setQuestion(e.target.value)} placeholder="Ask about logged food, groceries..." maxLength={300}/>
+        <button title="Ask locally" aria-label="Ask guided preview" type="submit"><Send size={17}/></button></form>
+      {reply&&<div className="guide-reply" role="status">{reply}</div>}
+      <div className="guide-shortcuts"><button type="button" onClick={()=>onNavigate('assistant')}>Full guided assistant</button><button type="button" onClick={()=>onNavigate('goals')}>Goals</button><button type="button" onClick={()=>onNavigate('inventory')}>Inventory</button></div>
+      <p className="guide-disclaimer"><Info size={13}/>Local deterministic preview · No live AI, clinical advice or autonomous actions</p>
     </div>
   </aside>;
 }
 
-function Dashboard({ meals, waterL, groceries, toggleGrocery, onAdd, onViewMeal, onPlanDinner, navigate, notify, isSampleDay, onReset, targets, waterObserved, displayName, budget, inventoryPreview }: {
+function Dashboard({ meals, waterL, groceries, toggleGrocery, onAdd, onViewMeal, navigate, isSampleDay, onReset, targets, waterObserved, displayName, budget, inventoryPreview, context, familySummary }: {
   meals: MealRecord[]; waterL:number; groceries:GroceryItem[]; toggleGrocery:(id:string)=>void;
-  onAdd:()=>void; onViewMeal:(m:MealRecord)=>void; onPlanDinner:(id:string)=>void;
-  navigate:(id:RouteId)=>void; notify:(n:Notice)=>void; isSampleDay:boolean; onReset:()=>void; targets:NutritionTargets; waterObserved:boolean; displayName:string; budget:number; inventoryPreview:{id:string;name:string;emoji:string;quantity:number}[];
+  onAdd:()=>void; onViewMeal:(m:MealRecord)=>void;
+  navigate:(id:RouteId)=>void; isSampleDay:boolean; onReset:()=>void; targets:NutritionTargets; waterObserved:boolean; displayName:string; budget:number; inventoryPreview:{id:string;name:string;emoji:string;quantity:number}[]; context:DecisionContext; familySummary:PublicFamilySummary;
 }) {
   const [nutriTab,setNutriTab]=useState<NutriTab>('macros');
   const [groceryTab,setGroceryTab]=useState<GroceryTab>('list');
@@ -213,18 +228,10 @@ function Dashboard({ meals, waterL, groceries, toggleGrocery, onAdd, onViewMeal,
     </div>
     <div className="dashboard-content"><div className="dashboard-main">
       <div className="mid-grid"><MealTimeline meals={meals} onAdd={onAdd} onView={onViewMeal} onNavigate={navigate}/><NutrientsPanel tab={nutriTab} setTab={setNutriTab} totals={totals} navigate={navigate} targets={targets}/></div>
-      <div className="bottom-grid"><WeeklyCard navigate={navigate}/><GroceryCard groceries={groceries} toggleGrocery={toggleGrocery} tab={groceryTab} setTab={setGroceryTab} navigate={navigate} budget={budget} inventoryPreview={inventoryPreview}/><FamilyCard navigate={navigate}/></div>
-    </div><Guide totalProtein={totals.proteinG} hasObservations={totals.hasObservations} targets={targets} onPlan={onPlanDinner} onNavigate={navigate} notify={notify}/></div>
+      <div className="bottom-grid"><WeeklyCard navigate={navigate}/><GroceryCard groceries={groceries} toggleGrocery={toggleGrocery} tab={groceryTab} setTab={setGroceryTab} navigate={navigate} budget={budget} inventoryPreview={inventoryPreview}/><FamilyCard navigate={navigate} summary={familySummary} budget={budget}/></div>
+    </div><Guide context={context} onNavigate={navigate}/></div>
     </>
     }
-  </div>;
-}
-
-function FamilyOverview({ navigate }: { navigate:(id:RouteId)=>void }) {
-  return <div className="family-page"><div className="page-heading"><span className="eyebrow"><Users size={14}/> HOUSEHOLD SPACE</span><h1>Family Nutrition Command Center</h1><p>Plan together, keep everyone's private health and nutrition data protected.</p></div>
-    <div className="family-stat-cards"><div className="panel"><span className="family-icon green">🍲</span><small>Shared dinners</small><strong>5 / 7 planned</strong></div><div className="panel"><span className="family-icon peach">🛒</span><small>Grocery list</small><strong>6 example items</strong></div><div className="panel"><span className="family-icon blue">💳</span><small>Example food budget</small><strong>KES 5,500</strong></div></div>
-    <section className="panel family-overview-panel"><h2>What's coming in Phase 4</h2><p>Shared meal planning with member-specific adaptations, a household grocery workflow and budget-aware nutrition suggestions.</p><div className="roadmap-tiles"><span><CheckCircle2 size={18}/> Household meal coordination</span><span><ShoppingBasket size={18}/> Shared resources</span><span><LockKeyhole size={18}/> Member-by-member consent</span></div><button type="button" className="outlined-button" onClick={()=>navigate('dashboard')}>Back to dashboard <ArrowRight size={16}/></button></section>
-    <div className="privacy-strip"><ShieldCheck size={20}/><div><strong>Privacy by design</strong><p>No individual family member's nutrient scores, inferred health data or recommendations are exposed in this preview.</p></div></div>
   </div>;
 }
 
@@ -274,6 +281,8 @@ export default function App() {
   const [route,setRoute]=useState<RouteId>(routeFromHash);
   const [mobileOpen,setMobileOpen]=useState(false);
   const [view,setView]=useState<ViewMode>('personal');
+  const [family,setFamily]=useState<FamilyWorkspaceState>(sampleFamilyWorkspace);
+  const [insightFeedback,setInsightFeedback]=useState<InsightFeedback[]>([]);
   const [meals,setMeals]=useState<MealRecord[]>(sampleMeals);
   const [profile,setProfile]=useState<NutritionProfile>(DEFAULT_PROFILE);
   const [targets,setTargets]=useState<NutritionTargets>(DEFAULT_TARGETS);
@@ -297,7 +306,7 @@ export default function App() {
   useEffect(()=>{if(!notice)return;const id=window.setTimeout(()=>setNotice(null),5000);return()=>window.clearTimeout(id);},[notice]);
   const date=useMemo(()=>{const d=new Date(`${SAMPLE_DATE}T12:00:00Z`);d.setUTCDate(d.getUTCDate()+dayOffset);return d.toLocaleDateString('en-KE',{weekday:'short',month:'short',day:'numeric',year:'numeric',timeZone:'UTC'});},[dayOffset]);
   const activeDate=useMemo(()=>{const d=new Date(SAMPLE_DATE+'T12:00:00Z');d.setUTCDate(d.getUTCDate()+dayOffset);return d.toISOString().slice(0,10);},[dayOffset]);
-  const nav=(id:RouteId)=>{setRoute(id);window.location.hash=id==='dashboard'?'#/':'#/'+id;setMobileOpen(false);setShowSearch(false);setProfileOpen(false);};
+  const nav=(id:RouteId)=>{setRoute(id);if(id==='family')setView('family');else if(id==='dashboard')setView('personal');window.location.hash=id==='dashboard'?'#/':'#/'+id;setMobileOpen(false);setShowSearch(false);setProfileOpen(false);};
   const toggleGrocery=(id:string)=>setShoppingList(prev=>({...prev,lines:prev.lines.map(l=>l.id===id&&!l.received?{...l,purchased:!l.purchased,paidKes:l.purchased?null:l.paidKes}:l)}));
   const dashboardGroceries:GroceryItem[]=shoppingList.lines.map(l=>{
     const f=sampleFoodChoices.find(f=>f.id===l.foodId);
@@ -330,8 +339,7 @@ export default function App() {
     setLots(newLots);setStockMovements(ledger);
     setShoppingList(prev=>({...prev,lines:prev.lines.map(l=>l.id===line.id?{...l,received:true}:l)}));
   };
-  function planDinner(id:string){const choice=sampleRecommendations.find(r=>r.id===id);if(!choice)return;nav('planner');}
-  function addMeal(meal:MealRecord){setMeals(prev=>[...prev,{...meal,recordedOn:meal.recordedOn??activeDate}].sort((a,b)=>a.time.localeCompare(b.time)));setMealModal(false);setNotice({title:'Sample meal added',body:'Your preview totals were updated in memory. No data was saved to a server.'});}
+function addMeal(meal:MealRecord){setMeals(prev=>[...prev,{...meal,recordedOn:meal.recordedOn??activeDate}].sort((a,b)=>a.time.localeCompare(b.time)));setMealModal(false);setNotice({title:'Sample meal added',body:'Your preview totals were updated in memory. No data was saved to a server.'});}
   const personalRoutes:PersonalRoute[]=['onboarding','profile','today','meals','foods','recipes','goals','progress'];
   const editMeal=(meal:MealRecord)=>setMeals(prev=>{
     const found=prev.some(m=>m.id===meal.id);
@@ -357,6 +365,12 @@ export default function App() {
     return [...base,...planned];
   },[meals,plans,recipes]);
   const resourceRoutes:ResourceRoute[]=['planner','groceries','inventory','budget','waste'];
+  const intelligenceRoutes:IntelligenceRoute[]=['insights','assistant','family'];
+  const context:DecisionContext={asOf:activeDate,meals:visibleMeals,profile,targets,recipes,foods:sampleFoodChoices,
+    plans,lots,movements:stockMovements,groceries:shoppingList,budgetKes:foodBudget,prices:sampleUnitPricesKes};
+  const householdContext:DecisionContext={...context,meals:[],profile:DEFAULT_PROFILE,targets:DEFAULT_TARGETS};
+  const familySummary=familyProjection(family,plans,shoppingList,lots,stockMovements,'self');
+  const onFeedback=(feedback:InsightFeedback)=>setInsightFeedback(prev=>[...prev.filter(f=>f.insightId!==feedback.insightId),feedback]);
   const foodResults=sampleFoodChoices.filter(f=>f.name.toLowerCase().includes(search.toLowerCase())).slice(0,5);
   return <div className="app-shell">
     <div className={`sidebar-overlay ${mobileOpen?'show':''}`} onClick={()=>setMobileOpen(false)} aria-hidden="true"/>
@@ -376,9 +390,9 @@ export default function App() {
       <div className="profile-wrap"><button type="button" className="profile-button" onClick={()=>{setProfileOpen(!profileOpen);setNotifications(false);}} aria-expanded={profileOpen}><span className="avatar">A</span><span className="profile-copy"><b>Demo profile</b><small>{view==='personal'?'Personal view':'Family view'}</small></span><ChevronDown size={16}/></button>{profileOpen&&<div className="top-popover profile-popover"><button type="button" onClick={()=>{setView('personal');nav('dashboard');}}>Personal dashboard</button><button type="button" onClick={()=>{setView('family');nav('dashboard');}}>Family dashboard</button><button type="button" onClick={()=>nav('profile')}>Nutrition profile</button><button type="button" onClick={()=>nav('onboarding')}>Run onboarding</button><span>Sample session · no sign-in</span></div>}</div>
       </div></header>
       <main className="workspace"><div className="workspace-toolbar"><span className="preview-badge"><span className="preview-dot"/> SAMPLE DATA · INTERACTIVE PREVIEW</span><div className="toolbar-actions"><button className="utility-btn" type="button" disabled={dayOffset!==0} onClick={()=>{adjustWater(.25);setNotice({title:'Hydration updated',body:'Added 250 ml to the example day. This change is temporary.'});}}><Droplets size={16}/> +250 ml water</button><button className="primary-button toolbar-add" type="button" onClick={()=>setMealModal(true)}><Plus size={17}/> Log meal</button></div></div>
-      {route==='dashboard' ? view==='personal'?<Dashboard meals={mealsOnDate(visibleMeals,activeDate,SAMPLE_DATE)} budget={foodBudget} inventoryPreview={inventoryPreview} waterL={dayOffset===0?waterL:0} waterObserved={dayOffset===0} displayName={profile.onboardingComplete?profile.displayName:""} targets={targets} groceries={dashboardGroceries} toggleGrocery={toggleGrocery} onAdd={()=>setMealModal(true)} onViewMeal={setSelectedMeal} onPlanDinner={planDinner} navigate={nav} notify={setNotice} isSampleDay={dayOffset===0 || mealsOnDate(visibleMeals,activeDate,SAMPLE_DATE).length>0} onReset={()=>setDayOffset(0)}/>:<FamilyOverview navigate={nav}/> :
-        personalRoutes.includes(route as PersonalRoute)?<PersonalExperience key={route} route={route as PersonalRoute} meals={visibleMeals} activeDate={activeDate} waterL={waterL} profile={profile} targets={targets} recipes={recipes} foods={sampleFoodChoices} navigate={nav} onOpenMealLogger={()=>setMealModal(true)} onViewMeal={setSelectedMeal} onAddMeal={addMeal} onEditMeal={editMeal} onDeleteMeal={removeMeal} onSaveProfile={setProfile} onSaveTargets={setTargets} onSaveRecipe={saveRecipe} onDeleteRecipe={id=>setRecipes(prev=>prev.filter(r=>r.id!==id))} onAdjustWater={adjustWater} onNotice={(title,body)=>setNotice({title,body})}/>:resourceRoutes.includes(route as ResourceRoute)?<ResourceExperience key={route} route={route as ResourceRoute} activeDate={activeDate} plans={plans} recipes={recipes} foods={sampleFoodChoices} priceBook={sampleUnitPricesKes} lots={lots} movements={stockMovements} list={shoppingList} archivedLists={archivedLists} budgetKes={foodBudget} onPlan={onSavePlan} onList={setShoppingList} onGenerate={onGenerateGroceries} onBudget={setFoodBudget} onAddLot={onAddLot} onRecord={onRecordMovement} onTransfer={onTransferStock} onReceive={onReceive} navigate={nav} notify={(title,body)=>setNotice({title,body})}/>:route==='family'?<FamilyOverview navigate={nav}/>:<ModulePreview route={route} navigate={nav}/>}
-      <footer className="page-footer">Nutrition OS · Phase 3 meal planning & resources preview <span>Sample values only · Not medical advice · No account data is used</span></footer>
+      {route==='dashboard' ? view==='personal'?<Dashboard context={context} familySummary={familySummary} meals={mealsOnDate(visibleMeals,activeDate,SAMPLE_DATE)} budget={foodBudget} inventoryPreview={inventoryPreview} waterL={dayOffset===0?waterL:0} waterObserved={dayOffset===0} displayName={profile.onboardingComplete?profile.displayName:""} targets={targets} groceries={dashboardGroceries} toggleGrocery={toggleGrocery} onAdd={()=>setMealModal(true)} onViewMeal={setSelectedMeal} navigate={nav} isSampleDay={dayOffset===0 || mealsOnDate(visibleMeals,activeDate,SAMPLE_DATE).length>0} onReset={()=>setDayOffset(0)}/>:<IntelligenceExperience route="family" context={householdContext} feedback={insightFeedback} onFeedback={onFeedback} family={family} onFamily={setFamily} navigate={nav} notify={(title,body)=>setNotice({title,body})}/> :
+        personalRoutes.includes(route as PersonalRoute)?<PersonalExperience key={route} route={route as PersonalRoute} meals={visibleMeals} activeDate={activeDate} waterL={waterL} profile={profile} targets={targets} recipes={recipes} foods={sampleFoodChoices} navigate={nav} onOpenMealLogger={()=>setMealModal(true)} onViewMeal={setSelectedMeal} onAddMeal={addMeal} onEditMeal={editMeal} onDeleteMeal={removeMeal} onSaveProfile={setProfile} onSaveTargets={setTargets} onSaveRecipe={saveRecipe} onDeleteRecipe={id=>setRecipes(prev=>prev.filter(r=>r.id!==id))} onAdjustWater={adjustWater} onNotice={(title,body)=>setNotice({title,body})}/>:resourceRoutes.includes(route as ResourceRoute)?<ResourceExperience key={route} route={route as ResourceRoute} activeDate={activeDate} plans={plans} recipes={recipes} foods={sampleFoodChoices} priceBook={sampleUnitPricesKes} lots={lots} movements={stockMovements} list={shoppingList} archivedLists={archivedLists} budgetKes={foodBudget} onPlan={onSavePlan} onList={setShoppingList} onGenerate={onGenerateGroceries} onBudget={setFoodBudget} onAddLot={onAddLot} onRecord={onRecordMovement} onTransfer={onTransferStock} onReceive={onReceive} navigate={nav} notify={(title,body)=>setNotice({title,body})}/>:intelligenceRoutes.includes(route as IntelligenceRoute)?<IntelligenceExperience key={route} route={route as IntelligenceRoute} context={route==='family'?householdContext:context} feedback={insightFeedback} onFeedback={onFeedback} family={family} onFamily={setFamily} navigate={nav} notify={(title,body)=>setNotice({title,body})}/>:<ModulePreview route={route} navigate={nav}/>}
+      <footer className="page-footer">Nutrition OS · Phase 4 nutrition intelligence & family preview <span>Sample values only · Not medical advice · No account data is used</span></footer>
       </main>
     </div>
     {notice&&<div className="toast" role="status"><div><CheckCircle2 size={20}/><strong>{notice.title}</strong></div><p>{notice.body}</p><button type="button" onClick={()=>setNotice(null)} aria-label="Dismiss notice"><X size={16}/></button></div>}

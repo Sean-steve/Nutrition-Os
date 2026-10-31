@@ -38,3 +38,9 @@
 - App loads from a static subpath such as `/Nutrition-Os/`.
 - No controls advertised as live beyond local demo behavior.
 - Keyboard focus, status labels, small screen reflow, and screen-reader labels.
+
+## Phase 4 -- frontend prototype
+- Observed-only explainable nutrition insights with feedback and limitations.
+- Rule-based read-only assistant with safety responses, tool boundaries and no LLM connection.
+- Family Nutrition Command Center: shared plans, kitchen assignments, groceries, household budget and privacy-safe demo roles.
+- See `PHASE_4_DELIVERY.md`.

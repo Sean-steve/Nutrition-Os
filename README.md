@@ -46,3 +46,6 @@ See [Phase 2 delivery](docs/PHASE_2_DELIVERY.md) for implemented screens and dat
 
 ### Phase 3 resource handoff
 See [Phase 3 implementation](docs/PHASE_3_DELIVERY.md). Stocks are in example food servings; KES prices are made-up estimates. Changes reset after page reload and no financial or health services are called.
+
+### Phase 4 -- Intelligence & Family Command Center
+`Insights`, `AI Nutrition Guide`, and `Family` now provide connected, deterministic frontend experiences. Insights use observed meals, source notes, confidence labels and feedback; assistant responses are read-only and block sensitive clinical requests; family coordination uses shared plans, groceries and kitchen tasks, never other members' nutrition records. No model provider, data persistence, real consent/identity integration or clinical validation exists. See [Phase 4 delivery](docs/PHASE_4_DELIVERY.md).
