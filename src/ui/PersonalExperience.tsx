@@ -1,10 +1,10 @@
-import { useMemo, useState, type FormEvent } from 'react';
+import { useState, type FormEvent, type ReactNode } from 'react';
 import {
-  Activity, ArrowRight, BookOpen, CalendarDays, Check, ChevronLeft, ChevronRight,
+  Activity, ArrowRight, BookOpen, CalendarDays, Check, ChevronLeft,
   Clock, Droplets, Edit3, Flame, Heart, Info, Leaf, Plus, Search, ShieldCheck,
   Target, Trash2, TrendingUp, Utensils, X,
 } from 'lucide-react';
-import { calculateLoggedTotals, clampProgress, remaining, type FoodChoice, type MealRecord, type MealSlot } from '../domain/nutrition';
+import { calculateLoggedTotals, clampProgress, type FoodChoice, type MealRecord, type MealSlot } from '../domain/nutrition';
 import {
   DEFAULT_TARGETS, foodAmount, mealsOnDate, observedDays, recipeAmount,
   validProfile, validTargets, type NutritionProfile, type NutritionTargets, type RecipeIngredient, type RecipeRecord,
@@ -37,14 +37,14 @@ export interface Phase2Props {
 }
 
 function Header({ icon: Icon, eyebrow, title, description, actions }: {
-  icon: typeof Leaf; eyebrow: string; title: string; description: string; actions?: React.ReactNode;
+  icon: typeof Leaf; eyebrow: string; title: string; description: string; actions?: ReactNode;
 }) {
   return <header className="p2-header">
     <div><span className="eyebrow"><Icon size={14}/> {eyebrow}</span><h1>{title}</h1><p>{description}</p></div>
     {actions && <div className="p2-header-actions">{actions}</div>}
   </header>;
 }
-function Card({ title, subtitle, children, action }: {title: string; subtitle?: string; children: React.ReactNode; action?: React.ReactNode}) {
+function Card({ title, subtitle, children, action }: {title: string; subtitle?: string; children: ReactNode; action?: ReactNode}) {
   return <section className="panel p2-card"><div className="p2-card-head"><div><h2>{title}</h2>{subtitle && <p>{subtitle}</p>}</div>{action}</div>{children}</section>;
 }
 function Metric({ label, value, info, icon: Icon }: {label:string;value:string;info:string;icon:typeof Leaf}) {
@@ -90,7 +90,7 @@ function ProfileFields({ value, setValue }: {value:NutritionProfile;setValue:(p:
 function Onboarding({ p }: {p:Phase2Props}) {
   const [step,setStep]=useState(0);
   const [profile,setProfile]=useState<NutritionProfile>({...p.profile});
-  const [targets,setTargets]=useState<NutritionTargets>({...p.targets});
+  const targets = p.targets;
   const [error,setError]=useState('');
   const steps=['Your basics','Your preferences','Your targets'];
   function next(){if(step===0 && !profile.displayName.trim()){setError('Enter a display name to continue.');return;}setError('');setStep(s=>Math.min(2,s+1));}
