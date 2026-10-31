@@ -35,7 +35,7 @@ This is a controlled engineering staging plan, not evidence that a live Nutritio
 7. \`docker compose --env-file infra/staging/.env.staging -f infra/staging/compose.yml up -d api\`.
 8. Configure Nginx/Caddy/managed TLS proxy on the host to forward only the staging API hostname to 127.0.0.1:3001, with HTTPS, HSTS, request limits, WAF/auth rate controls, and no database/admin/worker port exposure. Configure a separate staging frontend origin with the authenticated provider flow; do not use browser-pasted production tokens.
 9. Configure GitHub environment \`nutrition-staging\` with:
-   - vars \`NUTRITION_STAGING_WEB_URL\`, \`NUTRITION_STAGING_API_URL\`, \`NUTRITION_STAGING_SYNTHETIC_ACCOUNT=true\` only for a dedicated synthetic user.
+   - vars \`NUTRITION_STAGING_WEB_URL\`, \`NUTRITION_STAGING_API_URL\`, \`NUTRITION_STAGING_SYNTHETIC_ACCOUNT=true\`; the write drill also requires `NUTRITION_STAGING_TEST_USER_ID` and `NUTRITION_STAGING_TEST_TENANT_ID` to match the signed token.
    - secret \`NUTRITION_STAGING_TEST_USER_TOKEN\` (short-lived valid HOS-issued JWT for that synthetic account, scoped to Nutrition, rotated before each run).
    - protected environment reviewers as applicable. Never use personal or production access tokens.
 10. Trigger workflow \`Phase 8.1 — External staging certification\` from \`main\`. Optionally enable the one synthetic write/retire drill via workflow input (never against a real person's account).
