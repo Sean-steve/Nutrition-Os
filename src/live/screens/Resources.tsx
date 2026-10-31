@@ -1,7 +1,7 @@
 import {useState,type FormEvent} from 'react';
 import {AlertTriangle,ArrowRight,CalendarDays,Check,CheckCircle2,ChevronLeft,ChevronRight,Clock,Package,Plus,ShoppingBasket,Trash2,Wallet,Warehouse} from 'lucide-react';
 import type {LiveProps} from '../types';
-import type {ServerGroceryLine,ServerPlan,ServerLot} from '../client';
+import type {ServerGroceryLine,ServerLot} from '../client';
 import {asNumber,money,dateOnly} from '../client';
 import {Head,Card,Stat,Empty,Note,Action,Field,slots,locations,monday,shiftDay} from '../components';
 const upper=(str:string)=>str.charAt(0).toUpperCase()+str.slice(1);
