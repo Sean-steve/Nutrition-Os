@@ -28,7 +28,14 @@ export type SharedTask={id:string;meal_id:string;assigned_user_id:string;note:st
 export type SharedGrocery={id:string;title:string;quantity:string;estimate_kes:string|number;checked:boolean};
 export type HouseholdBoard={id:string;name:string;role:'owner'|'editor'|'viewer';ownerUserId:string;members:FamilyMember[];meals:SharedMeal[];tasks:SharedTask[];groceries:SharedGrocery[]};
 export type FamilyResult={boards:HouseholdBoard[];invites:{household_id:string;owner_user_id:string;alias:string;role:'editor'|'viewer';state:'invited'}[];disclaimer:string};
-export type LiveSnapshot={session:Session;profile:ServerProfile|null;foods:ServerFood[];recipes:ServerRecipe[];goals:ServerGoal[];
+export type KernelStatus={engineId:string;bridgeConfigured:boolean;authorityPresent:boolean;engineState:string;
+ active:boolean;authorityExpiresAt:string|null;grants:{scope:string;granted:boolean;expiresAt:string|null}[];
+ liveKernelTransportConnected:boolean;notice:string};
+export type KernelContext={context:Record<string,{key:string;value:unknown;observedAt:string;expiresAt:string}>;sources:string[];notice:string};
+export type KernelProposal={id:string;source_plan_id:string;proposed_day:string;start_time:string;end_time:string;
+ rationale_code:string;state:'proposed'|'accepted'|'rejected'|'revoked';kernel_decision_id:string|null;created_at:string;decided_at:string|null};
+export type KernelSnapshot={status:KernelStatus;context:KernelContext;proposals:KernelProposal[]};
+export type LiveSnapshot={session:Session;kernel:KernelSnapshot;profile:ServerProfile|null;foods:ServerFood[];recipes:ServerRecipe[];goals:ServerGoal[];
   meals:ServerMeal[];plans:ServerPlan[];inventory:ServerLot[];movements:ServerMovement[];groceries:ServerGroceryList[];
   budget:BudgetResult;water:WaterDay;progress:HistoryResult;state:StateResult;insight:InsightResult;family:FamilyResult};
 export class LiveApiError extends Error{
@@ -83,16 +90,19 @@ export class NutritionClient {
   const till=date,from=new Date(date+'T12:00:00Z');
   from.setUTCDate(from.getUTCDate()-89);
   const start=from.toISOString().slice(0,10);
-  const [session,profile,foods,recipes,goals,meals,plans,inventory,movements,groceries,budget,water,progress,state,insight,family]=await Promise.all([
+  const [session,profile,foods,recipes,goals,meals,plans,inventory,movements,groceries,budget,water,progress,state,insight,family,kernelStatus,kernelContext,kernelProposals]=await Promise.all([
     this.get<Session>('/session',signal),this.get<ServerProfile|null>('/profile',signal),this.get<ServerFood[]>('/foods',signal),
     this.get<ServerRecipe[]>('/recipes',signal),this.get<ServerGoal[]>('/goals',signal),this.get<ServerMeal[]>('/meals',signal),
     this.get<ServerPlan[]>('/plans',signal),this.get<ServerLot[]>('/inventory',signal),this.get<ServerMovement[]>('/inventory/movements',signal),
     this.get<ServerGroceryList[]>('/groceries',signal),this.get<BudgetResult>('/budget',signal),
     this.get<WaterDay>('/hydration'+encodeQuery({date}),signal),this.get<HistoryResult>('/progress'+encodeQuery({from:start,to:till}),signal),
     this.get<StateResult>('/state'+encodeQuery({date}),signal),this.get<InsightResult>('/insights'+encodeQuery({date}),signal),
-    this.get<FamilyResult>('/family',signal)
+    this.get<FamilyResult>('/family',signal),
+    this.get<KernelStatus>('/kernel/status',signal),
+    this.get<KernelContext>('/kernel/context',signal),
+    this.get<KernelProposal[]>('/kernel/proposals',signal)
   ]);
-  return {session,profile,foods,recipes,goals,meals,plans,inventory,movements,groceries,budget,water,progress,state,insight,family};
+  return {session,profile,foods,recipes,goals,meals,plans,inventory,movements,groceries,budget,water,progress,state,insight,family,kernel:{status:kernelStatus,context:kernelContext,proposals:kernelProposals}};
  }
  clear(){this.token='';}
 }
