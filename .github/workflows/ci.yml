@@ -1,20 +1,59 @@
-name: Nutrition OS CI
+name: Nutrition OS — frontend and PostgreSQL backend CI
 on:
   push:
-    branches: ["main", "feature/**"]
+    branches: ["main", "feat/**", "feature/**"]
   pull_request:
     branches: ["main"]
 permissions:
   contents: read
 jobs:
-  validate:
+  certify:
     runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_DB: nutrition_os
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: nutrition_dev_admin_2026
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d nutrition_os"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 15
+    env:
+      NODE_ENV: test
+      DATABASE_URL: postgresql://nutrition_app:nutrition_dev_only_2026@127.0.0.1:5432/nutrition_os
+      MIGRATION_DATABASE_URL: postgresql://postgres:nutrition_dev_admin_2026@127.0.0.1:5432/nutrition_os
+      ENABLE_DEV_DB_ROLE: "true"
+      DEV_DB_ROLE_PASSWORD: nutrition_dev_only_2026
+      LOCAL_IDENTITY_ENABLED: "true"
+      LOCAL_IDENTITY_SECRET: nutrition-test-local-signing-secret-not-for-production-2026
+      CORS_ORIGINS: http://localhost:5173
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
-      - run: npm install --no-audit --no-fund
-      - run: npm run check
-      - run: npm run test
-      - run: npm run build
+      - name: Frontend dependencies
+        run: npm install --no-audit --no-fund
+      - name: Frontend TypeScript
+        run: npm run check
+      - name: Frontend unit tests
+        run: npm run test
+      - name: Frontend production build
+        run: npm run build
+      - name: Backend dependencies
+        run: npm --prefix server install --no-audit --no-fund
+      - name: PostgreSQL migrations and dev-only app role
+        run: npm --prefix server run db:migrate
+      - name: Backend TypeScript
+        run: npm --prefix server run check
+      - name: Backend unit tests
+        run: npm --prefix server run test
+      - name: Backend build
+        run: npm --prefix server run build
+      - name: PostgreSQL integration and RLS certification
+        run: npm --prefix server run test:integration

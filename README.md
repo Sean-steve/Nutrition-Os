@@ -7,7 +7,9 @@
 - **Phase 1:** Premium interactive **frontend preview**. All meal records, metrics, recommendations, grocery quantities, and family references are **sample data** and remain in browser memory only. This is NOT an authenticated system or medical advice.
 - **Phase 2:** Personal nutrition screens — onboarding, profile, Today, Meals, Foods, Recipes, Goals and Progress — are implemented as a **frontend-only interactive preview**, with date-aware meal records, corrections, recipe snapshots, editable example targets and observed-data charts.
 - **Phase 3:** Weekly meal plans, generated groceries with pantry deductions, shopping-cost and spending separation, append-only inventory ledger, budget comparisons and waste/expiry tracking — **frontend-only preview**.
-- **Phases 4–8:** Intelligence, real APIs, PostgreSQL, Kernel integration and production certification are future work.
+- **Phase 4:** Nutrition intelligence preview and privacy-bounded family command center implemented.
+- **Phase 5:** Real PostgreSQL/Fastify backend with signed identity boundary, domain APIs, tenant RLS, transactions, idempotency, audit and outbox events. **Frontend is not yet connected to the backend.**
+- **Phases 6–8:** Frontend/backend integration, Personal Kernel bridge and production certification are future work.
 
 ## Local run
 ```sh
@@ -51,3 +53,19 @@ See [Phase 3 implementation](docs/PHASE_3_DELIVERY.md). Stocks are in example fo
 `Insights`, `AI Nutrition Guide`, and `Family` now provide connected, deterministic frontend experiences. Insights use observed meals, source notes, confidence labels and feedback; assistant responses are read-only and block sensitive clinical requests; family coordination uses shared plans, groceries and kitchen tasks, never other members' nutrition records. No model provider, data persistence, real consent/identity integration or clinical validation exists. See [Phase 4 delivery](docs/PHASE_4_DELIVERY.md).
 
 Phase 4 dashboard note: weekly figures are now derived from observed meal dates, approved plan entries and the active example grocery list; missing days do not receive fabricated scores.
+
+
+### Phase 5 — Local backend
+The Node API in `server/` is separately installed and deployed. GitHub Pages only hosts the Vite frontend; it cannot host this API or PostgreSQL.
+
+```bash
+docker compose -f docker-compose.backend.yml up -d
+npm --prefix server install
+cp server/.env.example server/.env
+npm --prefix server run db:migrate
+npm --prefix server run dev
+# in another terminal
+npm --prefix server run dev:token
+```
+
+The example database passwords and local token workflow are **development-only**. Never run the HTTP server as the PostgreSQL superuser. Live identity relies on Personal Kernel JWKS in future phases, and no backend demo records are seeded. See [Phase 5 delivery](docs/PHASE_5_DELIVERY.md) and [API contracts](docs/PHASE_5_API_CONTRACT.md).

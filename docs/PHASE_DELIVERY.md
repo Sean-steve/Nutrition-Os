@@ -44,3 +44,10 @@
 - Rule-based read-only assistant with safety responses, tool boundaries and no LLM connection.
 - Family Nutrition Command Center: shared plans, kitchen assignments, groceries, household budget and privacy-safe demo roles.
 - See `PHASE_4_DELIVERY.md`.
+
+## Phase 5 — PostgreSQL and REST API foundation
+- Fastify TypeScript server, PostgreSQL schema/migrations and restricted RLS-backed application role.
+- Scoped APIs for verified food records (user unverified by default), recipes, goals, meal snapshots, plans, groceries, pantry ledger and sample food budgets.
+- Transactional event outbox, minimal audit, request idempotency and leased test-sink dispatcher.
+- Frontend continues as a sample-only preview; integration occurs in Phase 6.
+- Documentation: `PHASE_5_DELIVERY.md`, `PHASE_5_API_CONTRACT.md`.
