@@ -97,6 +97,7 @@ export async function generateGroceries(db:SqlClient,a:Actor,v:z.infer<typeof gr
     stock.set(row.food_id,round3((stock.get(row.food_id)??0)+Math.max(0,numeric(row.balance))));
   }
   for(const id of Object.keys(v.unitPricesKes))if(!needed.has(id))throw new ApiError(422,'UNKNOWN_PRICE_KEY','Only planned ingredient IDs can carry price assumptions.');
+  await db.query("UPDATE nutrition.grocery_list SET status='archived' WHERE tenant_id=$1 AND user_id=$2 AND status='active'",own(a));
   const list=(await db.query('INSERT INTO nutrition.grocery_list(tenant_id,user_id,source_plan_id,source_plan_revision) VALUES($1,$2,$3,$4) RETURNING *',
     [...own(a),plan.id,plan.revision])).rows[0];
   const lines=[];
@@ -114,6 +115,8 @@ export async function generateGroceries(db:SqlClient,a:Actor,v:z.infer<typeof gr
 }
 export async function recordPurchase(db:SqlClient,a:Actor,id:string,purchased:boolean,actualPaidKes:number|null,corr:string){
   const line=await lockGroceryLine(db,a,id);
+  const current=(await db.query('SELECT status FROM nutrition.grocery_list WHERE tenant_id=$1 AND user_id=$2 AND id=$3',[...own(a),line.list_id])).rows[0];
+  if(current?.status!=='active')throw new ApiError(409,'ARCHIVED_LIST','Archived groceries cannot be modified.');
   if(line.received)throw new ApiError(409,'ALREADY_RECEIVED','Received stock cannot be silently unchecked.');
   const row=(await db.query('UPDATE nutrition.grocery_line SET purchased=$4,actual_paid_kes=$5 WHERE tenant_id=$1 AND user_id=$2 AND id=$3 RETURNING *',
     [...own(a),id,purchased,actualPaidKes])).rows[0];

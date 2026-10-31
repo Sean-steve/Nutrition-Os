@@ -8,7 +8,12 @@ const events=new Set([
  'nutrition.plan.approved','nutrition.plan.reopened',
  'nutrition.inventory.lot_created','nutrition.inventory.movement_recorded','nutrition.inventory.transferred',
  'nutrition.groceries.generated','nutrition.groceries.purchase_recorded','nutrition.groceries.received',
- 'nutrition.budget.updated'
+ 'nutrition.budget.updated','nutrition.food.updated','nutrition.food.retired',
+ 'nutrition.recipe.updated','nutrition.recipe.retired','nutrition.hydration.recorded',
+ 'nutrition.groceries.list_created','nutrition.groceries.line_added','nutrition.groceries.line_updated',
+ 'nutrition.groceries.line_deleted','nutrition.household.created','nutrition.household.invited',
+ 'nutrition.household.accepted','nutrition.household.role_changed','nutrition.household.plan_shared',
+ 'nutrition.household.task_saved','nutrition.household.grocery_added','nutrition.household.grocery_checked'
 ]);
 export function knownEvent(type:string):boolean{return events.has(type);}
 export async function recordChange(db:SqlClient,actor:Actor,data:{

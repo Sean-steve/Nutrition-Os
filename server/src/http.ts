@@ -16,6 +16,11 @@ import {getFoods,ownedFood,putFood,getProfile,putProfile,getGoals,putGoal,getRec
 import {createMeal,listMeals,getMeal,correctMeal,deleteMeal,observedState} from './services/meals.js';
 import {listPlans,createPlan,createPlanEntry,deletePlanEntry,setPlanStatus,updatePlanEntryLock} from './services/plans.js';
 import {getInventory,createLot,moveStock,transferStock,getBudget,putBudget,getGroceries,generateGroceries,recordPurchase,receiveGrocery} from './services/resources.js';
+import {reviseFood,retireFood,reviseRecipe,retireRecipe,getWater,putWater,progress,newGroceryList,manualGroceryLine,editGroceryLine,deleteGroceryLine,stockMovements,
+  reviseFoodInput,reviseRecipeInput,dailyWaterInput,datesInput,manualLineInput,lineEditInput} from './services/live.js';
+import {getSharedBoard,createHousehold,inviteMember,acceptInvite,changeRole,sharePlan,saveTask,addSharedGrocery,checkSharedGrocery,
+ householdCreate,memberInvite,memberRoleUpdate,householdTaskInput,householdGroceryInput,groceryCheckedInput,houseId,houseMemberId,houseItemId,sharePlanInput,acceptInviteInput
+} from './services/household.js';
 
 declare module 'fastify' {interface FastifyRequest {nutritionActor?:Actor;}}
 type Response={status:number;body:unknown};
@@ -199,6 +204,83 @@ export async function buildApp(opts:{pool:Pool;config:Config}){
     const {id}=parse(paramsId,req.params);const v=parse(receiveInput,req.body);
     const r=await mutate(pool,req,'nutrition:groceries:write',(db,a,c)=>receiveGrocery(db,a,id,v,c));
     return reply.code(r.status).send(r.body);
+  });
+  // Phase 6: full authenticated frontend integration endpoints.
+  app.put(version+'/foods/:id',async(req,reply)=>{
+    const {id}=parse(paramsId,req.params),v=parse(reviseFoodInput,req.body);
+    const r=await mutate(pool,req,'nutrition:foods:write',(db,a,c)=>reviseFood(db,a,id,v,c),200);return reply.code(r.status).send(r.body);
+  });
+  app.delete(version+'/foods/:id',async(req,reply)=>{
+    const {id}=parse(paramsId,req.params);const r=await mutate(pool,req,'nutrition:foods:write',(db,a,c)=>retireFood(db,a,id,c),200);return reply.code(r.status).send(r.body);
+  });
+  app.put(version+'/recipes/:id',async(req,reply)=>{
+    const {id}=parse(paramsId,req.params),v=parse(reviseRecipeInput,req.body);
+    const r=await mutate(pool,req,'nutrition:recipes:write',(db,a,c)=>reviseRecipe(db,a,id,v,c),200);return reply.code(r.status).send(r.body);
+  });
+  app.delete(version+'/recipes/:id',async(req,reply)=>{
+    const {id}=parse(paramsId,req.params);const r=await mutate(pool,req,'nutrition:recipes:write',(db,a,c)=>retireRecipe(db,a,id,c),200);return reply.code(r.status).send(r.body);
+  });
+  app.get(version+'/hydration',async req=>{
+    const v=parse(z.object({date:dateSchema}).strict(),req.query);
+    return {data:await read(pool,req,'nutrition:read',(db,a)=>getWater(db,a,v.date))};
+  });
+  app.put(version+'/hydration',async(req,reply)=>{
+    const v=parse(dailyWaterInput,req.body);
+    const r=await mutate(pool,req,'nutrition:hydration:write',(db,a,c)=>putWater(db,a,v,c),200);return reply.code(r.status).send(r.body);
+  });
+  app.get(version+'/progress',async req=>{
+    const v=parse(datesInput,req.query);
+    return {data:await read(pool,req,'nutrition:read',(db,a)=>progress(db,a,v.from,v.to))};
+  });
+  app.get(version+'/inventory/movements',async req=>({data:await read(pool,req,'nutrition:read',(db,a)=>stockMovements(db,a))}));
+  app.post(version+'/groceries/lists',async(req,reply)=>{
+    parse(z.object({}).strict(),req.body);
+    const r=await mutate(pool,req,'nutrition:groceries:write',(db,a,c)=>newGroceryList(db,a,c));return reply.code(r.status).send(r.body);
+  });
+  app.post(version+'/groceries/lines',async(req,reply)=>{
+    const v=parse(manualLineInput,req.body);
+    const r=await mutate(pool,req,'nutrition:groceries:write',(db,a,c)=>manualGroceryLine(db,a,v,c));return reply.code(r.status).send(r.body);
+  });
+  app.put(version+'/groceries/lines/:id',async(req,reply)=>{
+    const {id}=parse(paramsId,req.params),v=parse(lineEditInput,req.body);
+    const r=await mutate(pool,req,'nutrition:groceries:write',(db,a,c)=>editGroceryLine(db,a,id,v,c),200);return reply.code(r.status).send(r.body);
+  });
+  app.delete(version+'/groceries/lines/:id',async(req,reply)=>{
+    const {id}=parse(paramsId,req.params);
+    const r=await mutate(pool,req,'nutrition:groceries:write',(db,a,c)=>deleteGroceryLine(db,a,id,c),200);return reply.code(r.status).send(r.body);
+  });
+  // Families: only sanitized shared logistics, never personal meal observations.
+  app.get(version+'/family',async req=>({data:await read(pool,req,'nutrition:read',(db,a)=>getSharedBoard(db,a))}));
+  app.post(version+'/family',async(req,reply)=>{
+    const v=parse(householdCreate,req.body);const r=await mutate(pool,req,'nutrition:household:write',(db,a,c)=>createHousehold(db,a,v,c));return reply.code(r.status).send(r.body);
+  });
+  app.post(version+'/family/:id/invites',async(req,reply)=>{
+    const {id}=parse(houseId,req.params),v=parse(memberInvite,req.body);
+    const r=await mutate(pool,req,'nutrition:household:write',(db,a,c)=>inviteMember(db,a,id,v,c));return reply.code(r.status).send(r.body);
+  });
+  app.post(version+'/family/:id/accept',async(req,reply)=>{
+    const {id}=parse(houseId,req.params);parse(acceptInviteInput,req.body);
+    const r=await mutate(pool,req,'nutrition:household:write',(db,a,c)=>acceptInvite(db,a,id,c),200);return reply.code(r.status).send(r.body);
+  });
+  app.patch(version+'/family/:id/members/:memberId',async(req,reply)=>{
+    const {id,memberId}=parse(houseMemberId,req.params),v=parse(memberRoleUpdate,req.body);
+    const r=await mutate(pool,req,'nutrition:household:write',(db,a,c)=>changeRole(db,a,id,memberId,v,c),200);return reply.code(r.status).send(r.body);
+  });
+  app.post(version+'/family/:id/share-plan',async(req,reply)=>{
+    const {id}=parse(houseId,req.params),v=parse(sharePlanInput,req.body);
+    const r=await mutate(pool,req,'nutrition:household:write',(db,a,c)=>sharePlan(db,a,id,v.planId,c));return reply.code(r.status).send(r.body);
+  });
+  app.put(version+'/family/:id/tasks',async(req,reply)=>{
+    const {id}=parse(houseId,req.params),v=parse(householdTaskInput,req.body);
+    const r=await mutate(pool,req,'nutrition:household:write',(db,a,c)=>saveTask(db,a,id,v,c),200);return reply.code(r.status).send(r.body);
+  });
+  app.post(version+'/family/:id/groceries',async(req,reply)=>{
+    const {id}=parse(houseId,req.params),v=parse(householdGroceryInput,req.body);
+    const r=await mutate(pool,req,'nutrition:household:write',(db,a,c)=>addSharedGrocery(db,a,id,v,c));return reply.code(r.status).send(r.body);
+  });
+  app.patch(version+'/family/:id/groceries/:itemId',async(req,reply)=>{
+    const {id,itemId}=parse(houseItemId,req.params),v=parse(groceryCheckedInput,req.body);
+    const r=await mutate(pool,req,'nutrition:household:write',(db,a,c)=>checkSharedGrocery(db,a,id,itemId,v.checked,c),200);return reply.code(r.status).send(r.body);
   });
   return app;
 }
