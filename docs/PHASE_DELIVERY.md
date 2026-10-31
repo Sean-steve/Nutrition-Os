@@ -13,8 +13,12 @@
 - Clear demo labelling, nutrition uncertainty, and pending-module boundaries.
 - No fake authentication, fake clinical diagnoses, fake live AI or fake server persistence.
 
-## Phase 2 onward
-2. Onboarding, Today, Meals, foods/recipes, goals, progress.
+## Phase 2 — implemented on feature branch
+- Three-step onboarding, profile preferences, Today timeline, meal corrections/deletion, expanded food search and portion logging, recipe studio, editable goals, observed-date progress.
+- Frontend-only state; these operations are explicitly labeled as sample interactions and are not persisted.
+- See `PHASE_2_DELIVERY.md`.
+
+## Phase 3 onward
 3. Meal planner, grocery, inventory, budgets, waste.
 4. Recommendations, AI experience, insights, family logistics.
 5. Real database/domain services/REST/events.

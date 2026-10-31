@@ -181,20 +181,20 @@ function Guide({ totalProtein, onPlan, onNavigate, notify, targets }: { totalPro
   </aside>;
 }
 
-function Dashboard({ meals, waterL, groceries, toggleGrocery, onAdd, onViewMeal, onPlanDinner, navigate, notify, isSampleDay, onReset, targets }: {
+function Dashboard({ meals, waterL, groceries, toggleGrocery, onAdd, onViewMeal, onPlanDinner, navigate, notify, isSampleDay, onReset, targets, waterObserved, displayName }: {
   meals: MealRecord[]; waterL:number; groceries:GroceryItem[]; toggleGrocery:(id:string)=>void;
   onAdd:()=>void; onViewMeal:(m:MealRecord)=>void; onPlanDinner:(id:string)=>void;
-  navigate:(id:RouteId)=>void; notify:(n:Notice)=>void; isSampleDay:boolean; onReset:()=>void; targets:NutritionTargets;
+  navigate:(id:RouteId)=>void; notify:(n:Notice)=>void; isSampleDay:boolean; onReset:()=>void; targets:NutritionTargets; waterObserved:boolean; displayName:string;
 }) {
   const [nutriTab,setNutriTab]=useState<NutriTab>('macros');
   const [groceryTab,setGroceryTab]=useState<GroceryTab>('list');
   const totals=useMemo(()=>calculateLoggedTotals(meals),[meals]);
   const energyPct=clampProgress(totals.energyKcal,targets.energyKcal);
   const proteinPct=clampProgress(totals.proteinG,targets.proteinG);
-  const waterPct=clampProgress(waterL,targets.hydrationL);
-  const overall=calculateTrackingAlignment(energyPct,proteinPct,waterPct);
+  const waterPct=waterObserved?clampProgress(waterL,targets.hydrationL):0;
+  const overall=waterObserved?calculateTrackingAlignment(energyPct,proteinPct,waterPct):Math.round((energyPct+proteinPct)/2);
   return <div className="dashboard">
-    <header className="hero"><div className="hero-copy"><span className="eyebrow"><Leaf size={14}/> PERSONAL NUTRITION</span><h1>Good morning, welcome back <span className="wave">👋</span></h1><p>Here's your nutrition picture today.</p></div>
+    <header className="hero"><div className="hero-copy"><span className="eyebrow"><Leaf size={14}/> PERSONAL NUTRITION</span><h1>Good morning{displayName ? ', '+displayName : ', welcome back'} <span className="wave">👋</span></h1><p>Here's your nutrition picture today.</p></div>
       <svg className="hero-landscape" viewBox="0 0 600 160" aria-hidden="true" preserveAspectRatio="xMidYMid slice"><defs><linearGradient id="sky" x1="0" x2="1" y1="0" y2="1"><stop stopColor="#e9e9d7"/><stop offset="1" stopColor="#c6e3d5"/></linearGradient><linearGradient id="hill" x1="0" x2="0" y1="0" y2="1"><stop stopColor="#699f75"/><stop offset="1" stopColor="#1e634c"/></linearGradient></defs><rect width="600" height="160" fill="url(#sky)"/><circle cx="438" cy="30" r="22" fill="#fff7d6" opacity=".8"/><path d="M0 100 Q110 16 220 95 Q329 0 450 90 Q537 32 600 97 V160 H0" fill="#aac6a7" opacity=".55"/><path d="M0 117 Q150 72 300 116 Q436 56 600 112 V160 H0" fill="#84ab81" opacity=".62"/><path d="M0 135 Q160 96 315 131 Q460 95 600 127 V160 H0" fill="url(#hill)" opacity=".83"/></svg>
       <div className="hero-quote"><Leaf size={18}/><span>Better nutrition, one choice at a time.</span></div>
     </header>
@@ -203,7 +203,7 @@ function Dashboard({ meals, waterL, groceries, toggleGrocery, onAdd, onViewMeal,
     <div className="stats-grid"><article className="summary-card score-card"><RadialProgress value={overall} size="large"/><div><span className="metric-label">Goal alignment</span><h2>Daily overview</h2><p>Illustrative progress from logged example meals.</p></div></article>
       <SummaryCard icon={Flame} title="Energy" value={`${totals.energyKcal.toLocaleString()} / ${targets.energyKcal.toLocaleString()} kcal`} detail={`${remaining(totals.energyKcal,targets.energyKcal)} kcal to example target`} progress={energyPct} color="orange"/>
       <SummaryCard icon={Activity} title="Protein" value={`${Math.round(totals.proteinG)} / ${targets.proteinG} g`} detail={`${Math.round(remaining(totals.proteinG,targets.proteinG))}g to example target`} progress={proteinPct} color="blue"/>
-      <SummaryCard icon={Droplets} title="Hydration" value={`${waterL.toFixed(2).replace(/0$/,'')} / ${targets.hydrationL} L`} detail={`${remaining(waterL,targets.hydrationL).toFixed(2)} L to example target`} progress={waterPct} color="cyan"/>
+      <SummaryCard icon={Droplets} title="Hydration" value={waterObserved ? `${waterL.toFixed(2).replace(/0$/,"")} / ${targets.hydrationL} L` : "Not recorded"} detail={waterObserved ? `${remaining(waterL,targets.hydrationL).toFixed(2)} L to example target` : "No hydration observation for this date"} progress={waterPct} color="cyan"/>
     </div>
     <div className="dashboard-content"><div className="dashboard-main">
       <div className="mid-grid"><MealTimeline meals={meals} onAdd={onAdd} onView={onViewMeal} onNavigate={navigate}/><NutrientsPanel tab={nutriTab} setTab={setNutriTab} totals={totals} navigate={navigate} targets={targets}/></div>
@@ -314,7 +314,7 @@ export default function App() {
       <div className="profile-wrap"><button type="button" className="profile-button" onClick={()=>{setProfileOpen(!profileOpen);setNotifications(false);}} aria-expanded={profileOpen}><span className="avatar">A</span><span className="profile-copy"><b>Demo profile</b><small>{view==='personal'?'Personal view':'Family view'}</small></span><ChevronDown size={16}/></button>{profileOpen&&<div className="top-popover profile-popover"><button type="button" onClick={()=>{setView('personal');nav('dashboard');}}>Personal dashboard</button><button type="button" onClick={()=>{setView('family');nav('dashboard');}}>Family dashboard</button><button type="button" onClick={()=>nav('profile')}>Nutrition profile</button><button type="button" onClick={()=>nav('onboarding')}>Run onboarding</button><span>Sample session · no sign-in</span></div>}</div>
       </div></header>
       <main className="workspace"><div className="workspace-toolbar"><span className="preview-badge"><span className="preview-dot"/> SAMPLE DATA · INTERACTIVE PREVIEW</span><div className="toolbar-actions"><button className="utility-btn" type="button" disabled={dayOffset!==0} onClick={()=>{adjustWater(.25);setNotice({title:'Hydration updated',body:'Added 250 ml to the example day. This change is temporary.'});}}><Droplets size={16}/> +250 ml water</button><button className="primary-button toolbar-add" type="button" onClick={()=>setMealModal(true)}><Plus size={17}/> Log meal</button></div></div>
-      {route==='dashboard' ? view==='personal'?<Dashboard meals={mealsOnDate(meals,activeDate,SAMPLE_DATE)} waterL={waterL} targets={targets} groceries={groceries} toggleGrocery={toggleGrocery} onAdd={()=>setMealModal(true)} onViewMeal={setSelectedMeal} onPlanDinner={planDinner} navigate={nav} notify={setNotice} isSampleDay={dayOffset===0} onReset={()=>setDayOffset(0)}/>:<FamilyOverview navigate={nav}/> :
+      {route==='dashboard' ? view==='personal'?<Dashboard meals={mealsOnDate(meals,activeDate,SAMPLE_DATE)} waterL={dayOffset===0?waterL:0} waterObserved={dayOffset===0} displayName={profile.onboardingComplete?profile.displayName:""} targets={targets} groceries={groceries} toggleGrocery={toggleGrocery} onAdd={()=>setMealModal(true)} onViewMeal={setSelectedMeal} onPlanDinner={planDinner} navigate={nav} notify={setNotice} isSampleDay={dayOffset===0 || mealsOnDate(meals,activeDate,SAMPLE_DATE).some(m=>m.status==="logged")} onReset={()=>setDayOffset(0)}/>:<FamilyOverview navigate={nav}/> :
         personalRoutes.includes(route as PersonalRoute)?<PersonalExperience key={route} route={route as PersonalRoute} meals={meals} activeDate={activeDate} waterL={waterL} profile={profile} targets={targets} recipes={recipes} foods={sampleFoodChoices} navigate={nav} onOpenMealLogger={()=>setMealModal(true)} onViewMeal={setSelectedMeal} onAddMeal={addMeal} onEditMeal={editMeal} onDeleteMeal={removeMeal} onSaveProfile={setProfile} onSaveTargets={setTargets} onSaveRecipe={saveRecipe} onDeleteRecipe={id=>setRecipes(prev=>prev.filter(r=>r.id!==id))} onAdjustWater={adjustWater} onNotice={(title,body)=>setNotice({title,body})}/>:route==='family'?<FamilyOverview navigate={nav}/>:<ModulePreview route={route} navigate={nav}/>}
       <footer className="page-footer">Nutrition OS · Phase 2 personal nutrition preview <span>Sample values only · Not medical advice · No account data is used</span></footer>
       </main>
