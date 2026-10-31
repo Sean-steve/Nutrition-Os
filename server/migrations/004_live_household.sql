@@ -7,6 +7,11 @@ ALTER TABLE nutrition.grocery_line ADD COLUMN source text NOT NULL DEFAULT 'plan
  CHECK(source IN ('plan','manual'));
 ALTER TABLE nutrition.grocery_list ADD COLUMN status text NOT NULL DEFAULT 'active'
  CHECK(status IN ('active','archived'));
+UPDATE nutrition.grocery_list g SET status='archived'
+ WHERE g.id NOT IN (
+ SELECT DISTINCT ON (tenant_id,user_id) id FROM nutrition.grocery_list
+ ORDER BY tenant_id,user_id,created_at DESC,id DESC
+ );
 CREATE UNIQUE INDEX one_active_grocery_list_per_owner ON nutrition.grocery_list(tenant_id,user_id)
  WHERE status='active';
 -- Existing repositories are empty until the user creates their own records.
