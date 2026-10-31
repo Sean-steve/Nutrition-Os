@@ -61,6 +61,8 @@ jobs:
         run: |
           node --test scripts/staging/*.test.mjs
           node scripts/staging/certify.mjs --dry-run --expect-blocked --output phase8-1-offline-evidence.json
+      - name: Validate staging private networking and separate migrator Docker Compose
+        run: bash scripts/staging/compose-ci.sh
       - name: Runtime dependency vulnerability audit
         run: |
           npm audit --omit=dev --audit-level=high
