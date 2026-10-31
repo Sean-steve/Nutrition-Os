@@ -1,7 +1,6 @@
 import {useState,type FormEvent} from 'react';
-import {Activity,AlertTriangle,ArrowRight,BarChart3,CalendarDays,HeartHandshake,Info,LockKeyhole,Plus,Send,ShieldCheck,ShoppingBasket,Sparkles,Target,Users,Wallet} from 'lucide-react';
+import {Activity,AlertTriangle,ArrowRight,BarChart3,CalendarDays,HeartHandshake,Info,LockKeyhole,Plus,Send,ShieldCheck,ShoppingBasket,Sparkles,Target,Users} from 'lucide-react';
 import type {LiveProps} from '../types';
-import type {HouseholdBoard} from '../client';
 import {asNumber,money,dateOnly} from '../client';
 import {Action,Card,Empty,Field,Head,Note,Stat} from '../components';
 function insightFacts(p:LiveProps):{title:string;message:string;source:string;route:LiveProps['route'];kind:'observation'|'limitation'|'resource'}[]{
