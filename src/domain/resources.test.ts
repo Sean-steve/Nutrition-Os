@@ -58,6 +58,14 @@ describe('phase 3 resource contracts',()=>{
     expect(recordedGrocerySpend({...list,lines:[purchased]})).toBe(255);
     expect(()=>generateGroceries(changePlanStatus(plan,'draft'),[recipe],[lot],[purchase],{},'2026-10-31')).toThrow();
   });
+  it('does not treat an expiring lot as safe stock for meals later in the week',()=>{
+    const soon={...lot,expiresOn:'2026-10-30'};
+    let plan=newWeeklyPlan('2026-10-26');
+    plan=editPlan(plan,{action:'add',entry:{id:'later',date:'2026-11-01',slot:'Dinner',recipeId:'r',portions:1,locked:false}});
+    const list=generateGroceries(changePlanStatus(plan,'approved'),[recipe],[soon],[purchase],{rice:80},'2026-10-31');
+    expect(list.lines[0].stockOffsetServings).toBe(0);
+    expect(list.lines[0].quantityServings).toBe(2);
+  });
   it('flags expiry relative to chosen date and orders feasible recommendations deterministically',()=>{
     expect(daysUntil('2026-11-02','2026-10-31')).toBe(2);
     expect(daysUntil('2026-10-29','2026-10-31')).toBe(-2);

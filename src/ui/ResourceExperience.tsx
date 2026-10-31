@@ -1,16 +1,16 @@
 import { useMemo, useState, type FormEvent, type ReactNode } from 'react';
 import {
-  Activity, AlertTriangle, ArrowRight, CalendarDays, Check, CheckCircle2, ChevronLeft, ChevronRight,
+  Activity, AlertTriangle, ArrowRight, CalendarDays, CheckCircle2, ChevronLeft, ChevronRight,
   Clock, Edit3, Flame, Info, Leaf, Lock, LockOpen, Package, Plus, RefreshCw, Search,
   ShieldCheck, ShoppingBasket, Trash2, TrendingUp, Wallet, Warehouse, X,
 } from 'lucide-react';
 import type {FoodChoice, MealSlot} from '../domain/nutrition';
 import type {RecipeRecord} from '../domain/personal';
 import {
-  appendMovement, changePlanStatus, datesOfWeek, daysUntil, editPlan, estimateGroceries,
-  generateGroceries, getWasteStats, inventoryStock, isoDate, LOCATIONS, lotBalance, mondayOf,
+  changePlanStatus, datesOfWeek, daysUntil, editPlan, estimateGroceries,
+  getWasteStats, isoDate, LOCATIONS, lotBalance, mondayOf,
   newWeeklyPlan, rankRecipeCandidates, recordedGrocerySpend, shiftDate, summarizePlan,
-  validateShoppingLine, type GroceryList, type InventoryLot, type PlannedMeal, type ShoppingLine,
+  validateShoppingLine, type GroceryList, type InventoryLot, type ShoppingLine,
   type StockKind, type StockMovement, type StorageLocation, type WeeklyPlan,
 } from '../domain/resources';
 import './resources.css';
@@ -84,7 +84,14 @@ function Planner({p}:{p:ResourceProps}) {
   const {issue,attempt,clear}=useIssue();
   const days=datesOfWeek(start);
   const current=days.includes(day)?day:days[0];
-  const stock=useMemo(()=>inventoryStock(p.lots,p.movements),[p.lots,p.movements]);
+  const stock=useMemo(()=>{
+    const safe:Record<string,number>={};
+    for(const lot of p.lots){
+      if(lot.expiresOn&&daysUntil(lot.expiresOn,p.activeDate)<0)continue;
+      safe[lot.foodId]=(safe[lot.foodId]??0)+Math.max(0,lotBalance(lot.id,p.movements));
+    }
+    return safe;
+  },[p.lots,p.movements,p.activeDate]);
   const best=useMemo(()=>{
     try{return rankRecipeCandidates(p.recipes,p.foods,p.priceBook,stock,maxPrep).slice(0,3);}catch{return [];}
   },[p.recipes,p.foods,p.priceBook,stock,maxPrep]);
@@ -155,7 +162,7 @@ function Groceries({p}:{p:ResourceProps}) {
   const [manual,setManual]=useState(false);
   const [newFood,setNewFood]=useState(p.foods[0]?.id??'');
   const [newQty,setNewQty]=useState(1);
-  const [newPrice,setNewPrice]=useState(0);
+  const [newPrice,setNewPrice]=useState(p.priceBook[p.foods[0]?.id??'']??0);
   const [receiving,setReceiving]=useState<ShoppingLine|null>(null);
   const [location,setLocation]=useState<StorageLocation>('Pantry');
   const [expiry,setExpiry]=useState('');
@@ -166,7 +173,7 @@ function Groceries({p}:{p:ResourceProps}) {
   const filtered=p.list.lines.filter(l=>(foodOf(p,l.foodId)?.name??l.foodId).toLowerCase().includes(query.toLowerCase()));
   const plan=p.plans.find(x=>x.weekStart===mondayOf(p.activeDate));
   const stale=Boolean(plan&&p.list.sourcePlanId===plan.id&&plan.revision!==p.list.sourceRevision);
-  function replace(line:ShoppingLine){if(!validateShoppingLine(line))throw new Error('Enter a positive quantity, nonnegative price, and valid actual cost.');p.onList({...p.list,lines:p.list.lines.map(l=>l.id===line.id?line:l)});}
+  function replace(line:ShoppingLine){if(line.received)throw new Error("This item was already received; its stock receipt cannot be silently rewritten.");if(!validateShoppingLine(line))throw new Error('Enter a positive quantity, nonnegative price, and valid actual cost.');p.onList({...p.list,lines:p.list.lines.map(l=>l.id===line.id?line:l)});}
   function check(line:ShoppingLine){
     attempt(()=>{
       if(line.received)throw new Error('Already received into inventory. This purchase cannot be unchecked.');
@@ -198,7 +205,7 @@ function Groceries({p}:{p:ResourceProps}) {
           <span className="rs-food-icon">{food?.emoji??'🧺'}</span>
           <div className="rs-shopping-title"><strong>{food?.name??line.foodId}</strong><small>{qty(line.quantityServings)} × {food?.serving??'serving'} · {line.source==='plan'?'Plan requirement':'Manual'}</small><small>{line.source==='plan'?'Needed '+qty(line.neededServings)+', stock offset '+qty(line.stockOffsetServings)+' servings':'Custom shopping item'}</small></div>
           <div className="rs-shopping-money"><strong>{price(line.quantityServings*line.unitPriceKes)}</strong><small>{line.paidKes!==null?'Recorded amount: '+price(line.paidKes):line.purchased?'Checked · actual not recorded':'Estimated only'}</small></div>
-          <div className="rs-shopping-actions"><button className="outlined-button" type="button" aria-label={'Edit '+(food?.name??'item')} onClick={()=>{setEditor({...line});clear();}}><Edit3 size={15}/></button>
+          <div className="rs-shopping-actions"><button className="outlined-button" disabled={line.received} type="button" aria-label={'Edit '+(food?.name??'item')} onClick={()=>{setEditor({...line});clear();}}><Edit3 size={15}/></button>
           <button className="outlined-button" disabled={!line.purchased||line.received} type="button" onClick={()=>{setReceiving(line);setExpiry('');setLocation('Pantry');clear();}}>{line.received?'Received':'Receive'}</button>
           {line.source==='manual'&&<button type="button" className="outlined-button rs-danger" aria-label="Remove manual item" onClick={()=>p.onList({...p.list,lines:p.list.lines.filter(l=>l.id!==line.id)})}><Trash2 size={15}/></button>}
           </div>

@@ -141,7 +141,14 @@ export function generateGroceries(plan:WeeklyPlan,recipes:readonly RecipeRecord[
       needed[ing.foodId]=round3((needed[ing.foodId]??0)+ing.servings*entry.portions/recipe.servings);
     }
   }
-  const stock=inventoryStock(lots,movements);
+  // Conservatively do not subtract lots expiring before all planned meals are served.
+  // A physical balance is not proof of food-safety suitability for a future meal.
+  const lastMealDate=plan.entries.reduce((max,e)=>e.date>max?e.date:max,plan.weekStart);
+  const stock:Record<string,number>={};
+  for(const lot of lots){
+    if(lot.expiresOn&&lot.expiresOn<lastMealDate)continue;
+    stock[lot.foodId]=round3((stock[lot.foodId]??0)+Math.max(0,lotBalance(lot.id,movements)));
+  }
   const lines:ShoppingLine[]=Object.entries(needed).map(([foodId,qty])=>{
     const offset=Math.min(qty,stock[foodId]??0);
     return {id:'need-'+foodId,foodId,quantityServings:round3(Math.max(0,qty-offset)),unitPriceKes:prices[foodId]??0,
