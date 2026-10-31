@@ -59,8 +59,12 @@ test('API disruption cannot substitute any sample records',async({page})=>{
 });
 test('login accessibility and mobile viewport stay within baseline limits',async({page,isMobile})=>{
  await page.goto('/?mode=live');
+ await expect(page.getByRole('heading',{name:'Your nutrition. Your records.'})).toBeVisible();
  const scan=await new AxeBuilder({page}).withTags(['wcag2a','wcag2aa','wcag21aa']).analyze();
  const serious=scan.violations.filter(v=>v.impact==='serious'||v.impact==='critical');
+ if(serious.length)console.log('Accessibility evidence:',JSON.stringify(serious.map(v=>({
+   id:v.id,nodes:v.nodes.map(n=>({target:n.target,summary:n.failureSummary}))
+ }))));
  expect(serious.map(v=>v.id)).toEqual([]);
  await page.keyboard.press('Tab');
  const active=await page.evaluate(()=>document.activeElement?.tagName??'');
