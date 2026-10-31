@@ -39,7 +39,9 @@ export async function consumeKernelEvent(db:SqlClient,a:BridgeActor,raw:unknown)
   '(tenant_id,user_id,household_id,role,active,expires_at,asserted_at,source_event_id) VALUES($1,$2,$3,$4,$5,$6,$7,$8) '+
   'ON CONFLICT(tenant_id,user_id,household_id) DO UPDATE SET role=EXCLUDED.role,active=EXCLUDED.active, '+
   'expires_at=EXCLUDED.expires_at,asserted_at=EXCLUDED.asserted_at,source_event_id=EXCLUDED.source_event_id,updated_at=now() ' +
-  'WHERE EXCLUDED.asserted_at>nutrition.kernel_family_attestation.asserted_at',
+  'WHERE EXCLUDED.asserted_at>nutrition.kernel_family_attestation.asserted_at ' +
+  'OR (EXCLUDED.asserted_at=nutrition.kernel_family_attestation.asserted_at AND ' +
+  'EXCLUDED.active=false AND nutrition.kernel_family_attestation.active=true)',
   [...own(a),p.householdId,p.role,p.active,new Date(Math.max(Date.now()+1000,expires)).toISOString(),event.occurredAt,event.eventId]);
  }else if(event.eventType==='kernel.plan.decision'){
   const p=payload as z.infer<typeof kernelInbound['kernel.plan.decision']['schema']>;
