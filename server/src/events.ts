@@ -4,7 +4,7 @@ import type {Actor} from './auth.js';
 const events=new Set([
  'nutrition.food.created','nutrition.recipe.created','nutrition.profile.updated',
  'nutrition.goal.created','nutrition.meal.logged','nutrition.meal.corrected','nutrition.meal.deleted',
- 'nutrition.plan.created','nutrition.plan.entry_added','nutrition.plan.entry_removed',
+ 'nutrition.plan.created','nutrition.plan.entry_added','nutrition.plan.entry_removed','nutrition.plan.entry_lock_changed',
  'nutrition.plan.approved','nutrition.plan.reopened',
  'nutrition.inventory.lot_created','nutrition.inventory.movement_recorded','nutrition.inventory.transferred',
  'nutrition.groceries.generated','nutrition.groceries.purchase_recorded','nutrition.groceries.received',
