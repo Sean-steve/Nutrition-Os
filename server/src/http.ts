@@ -77,6 +77,18 @@ export async function buildApp(opts:{pool:Pool;config:Config}){
   const {pool,config}=opts;
   const app=Fastify({logger:false,bodyLimit:1024*256,disableRequestLogging:true});
   await app.register(cors,{origin:config.corsOrigins.length?config.corsOrigins:false,credentials:false});
+  // API endpoints carry private responses and must never be cached or framed.
+  app.addHook('onSend',async (request,reply,payload)=>{
+    reply.header('Cache-Control','no-store, private');
+    reply.header('Pragma','no-cache');
+    reply.header('X-Content-Type-Options','nosniff');
+    reply.header('Referrer-Policy','no-referrer');
+    reply.header('X-Frame-Options','DENY');
+    reply.header('Content-Security-Policy',"default-src 'none'; frame-ancestors 'none'; base-uri 'none'");
+    reply.header('Permissions-Policy','camera=(), microphone=(), geolocation=()');
+    if(request.protocol==='https:')reply.header('Strict-Transport-Security','max-age=31536000; includeSubDomains');
+    return payload;
+  });
   app.setErrorHandler((error,req,reply)=>{
     let status=500,code='INTERNAL_ERROR',message='An unexpected error occurred.';
     if(error instanceof ApiError){status=error.statusCode;code=error.code;message=error.message;}
@@ -96,8 +108,15 @@ export async function buildApp(opts:{pool:Pool;config:Config}){
   });
   app.get('/health/live',async()=>({status:'alive',service:'nutrition-os-api'}));
   app.get('/health/ready',async(_req,reply)=>{
-    try{await pool.query('SELECT 1');return {status:'ready',database:true};}
-    catch{reply.code(503);return {status:'unavailable',database:false};}
+    try{
+      await pool.query('SELECT 1');
+      const migrated=await pool.query("SELECT filename FROM nutrition.schema_migrations WHERE filename=ANY($1::text[])",
+        [['001_core.sql','002_rls.sql','003_owner_fks.sql','004_live_household.sql','005_kernel_governance.sql']]);
+      if(migrated.rows.length!==5)throw new Error('Unapplied schema migrations');
+      return {status:'ready',database:true,migrations:true};
+    }catch{
+      reply.code(503);return {status:'unavailable',database:false,migrations:false};
+    }
   });
   app.get(version+'/session',async req=>{
     const actor=actorOf(req);requireScope(actor,'nutrition:read');
