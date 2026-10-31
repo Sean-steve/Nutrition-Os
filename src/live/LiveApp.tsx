@@ -1,7 +1,7 @@
 import {useCallback,useEffect,useMemo,useRef,useState,type FormEvent} from 'react';
 import {
   Activity,AlertTriangle,Apple,ArrowRight,BarChart3,BookOpen,CalendarDays,CheckCircle2,
-  ChevronLeft,ChevronRight,Droplets,Heart,Home,Leaf,LockKeyhole,Menu,Package,
+  ChevronLeft,ChevronRight,Heart,Home,Leaf,LockKeyhole,Menu,Package,
   Search,Settings,ShieldCheck,ShoppingBasket,Signpost, Sparkles,Target,TrendingUp,
   Users,Utensils,Wallet,X
 } from 'lucide-react';
@@ -125,7 +125,7 @@ export default function LiveApp({onPreview}:ModeProps){
  function signOut(){sequence.current++;client?.clear();setToken(null);setData(null);setSuccess('');setError('');}
  const offline=token&&!data;
  if(!token)return <SignIn onSignIn={setToken} onPreview={onPreview}/>;
- const props=data?{client,data,date,route,busy,perform,navigate,setDate}:null;
+ const props=data&&client?{client,data,date,route,busy,perform,navigate,setDate}:null;
  const search=mainNav.concat(secondNav as unknown as typeof mainNav).filter(x=>x[1].toLowerCase().includes(query.trim().toLowerCase()));
  return <div className="app-shell lv-shell">
     <div className={'sidebar-overlay '+(menuOpen?'show':'')} aria-hidden="true" onClick={()=>setMenuOpen(false)}/>
