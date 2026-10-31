@@ -157,30 +157,42 @@ CREATE POLICY household_owner_update ON nutrition.household FOR UPDATE USING(
  WITH CHECK(tenant_id=NULLIF(current_setting('app.tenant_id',true),'')::uuid
  AND owner_user_id=NULLIF(current_setting('app.user_id',true),'')::uuid);
 
--- Every shared logistical table uses the same gate: owner or accepted member.
--- Only owner and accepted editor may create/edit shared meals, groceries, tasks.
+-- A SECURITY INVOKER permission check inherits the actor's RLS context.
+-- It never bypasses tenant or subject identity policies.
+CREATE FUNCTION nutrition.can_use_household(hid uuid,tid uuid,operation text)
+ RETURNS boolean LANGUAGE sql STABLE SECURITY INVOKER SET search_path=pg_catalog,nutrition AS $$
+  SELECT EXISTS (
+    SELECT 1 FROM nutrition.household h
+    WHERE h.id=hid AND h.tenant_id=tid
+      AND (
+        h.owner_user_id=NULLIF(current_setting('app.user_id',true),'')::uuid
+        OR (operation<>'owner' AND EXISTS (
+          SELECT 1 FROM nutrition.household_member m
+          WHERE m.tenant_id=tid AND m.household_id=hid
+            AND m.member_user_id=NULLIF(current_setting('app.user_id',true),'')::uuid
+            AND m.state='accepted'
+            AND (operation='read' OR (operation='write' AND m.role='editor'))
+        ))
+      )
+  );
+ $$;
 DO $$
-DECLARE tab text;
+DECLARE tab text; authority text;
 BEGIN
  FOREACH tab IN ARRAY ARRAY['household_meal','household_task','household_grocery'] LOOP
-  EXECUTE format('ALTER TABLE nutrition.%I ENABLE ROW LEVEL SECURITY',tab);
-  EXECUTE format('ALTER TABLE nutrition.%I FORCE ROW LEVEL SECURITY',tab);
-  EXECUTE format('CREATE POLICY shared_read ON nutrition.%I FOR SELECT USING (
-    tenant_id=NULLIF(current_setting(''app.tenant_id'',true),'''')::uuid
-    AND EXISTS(SELECT 1 FROM nutrition.household h WHERE h.tenant_id=%I.tenant_id AND h.id=%I.household_id))',tab,tab,tab);
-  EXECUTE format('CREATE POLICY shared_write ON nutrition.%I FOR ALL USING(
-    tenant_id=NULLIF(current_setting(''app.tenant_id'',true),'''')::uuid
-    AND EXISTS(SELECT 1 FROM nutrition.household h WHERE h.tenant_id=%I.tenant_id AND h.id=%I.household_id
-      AND (h.owner_user_id=NULLIF(current_setting(''app.user_id'',true),'''')::uuid OR
-       EXISTS(SELECT 1 FROM nutrition.household_member m WHERE m.tenant_id=h.tenant_id AND m.household_id=h.id
-         AND m.member_user_id=NULLIF(current_setting(''app.user_id'',true),'''')::uuid AND m.role=''editor'' AND m.state=''accepted''))))
-    ) WITH CHECK(
-    tenant_id=NULLIF(current_setting(''app.tenant_id'',true),'''')::uuid
-    AND EXISTS(SELECT 1 FROM nutrition.household h WHERE h.tenant_id=%I.tenant_id AND h.id=%I.household_id
-      AND (h.owner_user_id=NULLIF(current_setting(''app.user_id'',true),'''')::uuid OR
-       EXISTS(SELECT 1 FROM nutrition.household_member m WHERE m.tenant_id=h.tenant_id AND m.household_id=h.id
-         AND m.member_user_id=NULLIF(current_setting(''app.user_id'',true),'''')::uuid AND m.role=''editor'' AND m.state=''accepted''))))
-  )',tab,tab,tab,tab,tab);
+   authority := CASE WHEN tab='household_meal' THEN 'owner' ELSE 'write' END;
+   EXECUTE format('ALTER TABLE nutrition.%I ENABLE ROW LEVEL SECURITY',tab);
+   EXECUTE format('ALTER TABLE nutrition.%I FORCE ROW LEVEL SECURITY',tab);
+   EXECUTE format('CREATE POLICY shared_read ON nutrition.%I FOR SELECT USING (
+     tenant_id=NULLIF(current_setting(''app.tenant_id'',true),'''')::uuid
+     AND nutrition.can_use_household(household_id,tenant_id,''read''))',tab);
+   EXECUTE format('CREATE POLICY shared_write ON nutrition.%I FOR ALL USING (
+     tenant_id=NULLIF(current_setting(''app.tenant_id'',true),'''')::uuid
+     AND nutrition.can_use_household(household_id,tenant_id,%L))
+     WITH CHECK (
+     tenant_id=NULLIF(current_setting(''app.tenant_id'',true),'''')::uuid
+     AND nutrition.can_use_household(household_id,tenant_id,%L))',tab,authority,authority);
  END LOOP;
 END $$;
--- RLS will protect the tables even when the service neglects WHERE predicates.
+
+-- Kitchen sharing permission checks are bounded to this tenant and verified member.
