@@ -76,7 +76,7 @@ export const nutritionManifest={
  owner:'Nutrition OS',status:'inactive',
  capabilities:['nutrition.observation.read_v1','nutrition.schedule.propose_v1','nutrition.kitchen.shared_view_v1'],
  dataOwned:['nutrition_profiles','nutrition_meals','nutrition_foods','nutrition_recipes','nutrition_inventory','nutrition_plans'],
- eventsPublished:['nutrition.meal.logged','nutrition.hydration.recorded','nutrition.schedule.proposal.created'],
+ eventsPublished:['nutrition.observed_meals_changed.v1','nutrition.hydration_observed.v1','nutrition.schedule_proposed.v1'],
  eventsConsumed:Object.keys(kernelInbound),
  publishedSignals:['nutrition.observed_meals_count','nutrition.logged_energy_kcal','nutrition.logged_protein_g'],
  requiredSignals:[],
