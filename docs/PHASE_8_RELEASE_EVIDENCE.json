@@ -6,16 +6,16 @@
   "declaration": "Gate records are declarations, not self-certification. External services require independently reviewed evidence.",
   "gates": {
     "code_ci": {
-      "state": "pending",
-      "evidence": null,
+      "state": "verified",
+      "evidence": "https://github.com/Sean-steve/Nutrition-Os/actions/runs/41224265455",
       "owner": "Engineering",
-      "reason": "Post-merge CI on final Phase 8 main required."
+      "reason": "Final main TypeScript, unit, production bundle, signed API and runtime audit certification passed."
     },
     "postgres_migrations_rls": {
-      "state": "pending",
-      "evidence": null,
+      "state": "verified",
+      "evidence": "https://github.com/Sean-steve/Nutrition-Os/actions/runs/41224265455",
       "owner": "Engineering",
-      "reason": "Final migration/RLS CI evidence required."
+      "reason": "Final main PostgreSQL migrations 001–005 and RLS/integration tests passed."
     },
     "security_tests": {
       "state": "pending",
@@ -27,19 +27,19 @@
       "state": "pending",
       "evidence": null,
       "owner": "QA",
-      "reason": "Browser CI plus independent WCAG audit required."
+      "reason": "Desktop/mobile Playwright + axe A/AA CI passed on final main run 41224265455; independent manual WCAG/screen-reader review remains outstanding."
     },
     "backup_restore_drill": {
-      "state": "pending",
-      "evidence": null,
+      "state": "verified",
+      "evidence": "https://github.com/Sean-steve/Nutrition-Os/actions/runs/41224265455",
       "owner": "SRE",
-      "reason": "Ephemeral CI drill planned; production drill separate."
+      "reason": "Disposable PostgreSQL 16 custom dump/restore comparison and FORCE RLS verification passed on CI; production PITR is separate."
     },
     "performance_baseline": {
       "state": "pending",
       "evidence": null,
       "owner": "SRE",
-      "reason": "CI concurrency smoke not representative sustained production load."
+      "reason": "CI 60-request read burst and concurrent idempotent writes passed; sustained staging load/throughput baseline has not been measured."
     },
     "kernel_identity_provider": {
       "state": "blocked",
@@ -108,10 +108,10 @@
       "reason": "No security/privacy/clinical/go-live signoff."
     },
     "pages_preview": {
-      "state": "blocked",
+      "state": "pending",
       "evidence": null,
       "owner": "Repository Owner",
-      "reason": "GitHub Pages settings require GitHub Actions source."
+      "reason": "GitHub Pages deployment workflow 41224265387 succeeded; independent public-site smoke/accessibility and active content verification are still required."
     }
   }
 }
