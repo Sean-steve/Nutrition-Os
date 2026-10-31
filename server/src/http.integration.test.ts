@@ -16,8 +16,8 @@ let app:FastifyInstance,token:string,other:string,otherTenant:string,readonlyTok
 const route='/api/v1/nutrition';
 async function call(method:'GET'|'POST'|'PUT'|'PATCH'|'DELETE',path:string,body?:unknown,key?:string,jwt=token){
   const result=await app.inject({method,url:route+path,
-    headers:{authorization:'Bearer '+jwt,...(key?{'idempotency-key':key}:{})},
-    ...(body===undefined?{}:{payload:body})});
+    headers:{authorization:'Bearer '+jwt,...(key?{'idempotency-key':key}:{}),...(body===undefined?{}:{'content-type':'application/json'})},
+    ...(body===undefined?{}:{payload:JSON.stringify(body)})});
   return {status:result.statusCode,data:result.json() as any};
 }
 const key=()=>randomUUID();
