@@ -39,6 +39,14 @@ export function InsightsScreen({p}:{p:LiveProps}){
 const medical=/\b(newborn|infant|baby|toddler|pregnan\w*|breastfeed\w*|diabet\w*|allerg\w*|medication|anorexia|bulimia|eating disorder|severe|fasting|purge|starve|kidney disease|weight loss pill)\b/i;
 function answer(p:LiveProps,question:string):{title:string;answer:string;source:string;to:LiveProps['route']|null}{
  const q=question.trim().toLowerCase();
+ const safety=p.data.kernel.context.context.health;
+ if(safety?.key==='clinical_review_required'&&safety.value===true
+   && /\b(eat|diet|plan|recipe|allerg|meal|protein|calorie|nutrition)\b/.test(q)){
+  return {title:'Clinical review required by authorized health projection',
+    answer:'The authorized health-safety signal requires professional review. Nutrition OS will not recommend or optimize a personal diet until the relevant clinical guidance is provided through an approved process.',
+    source:'Consent-scoped health.nutrition_safety.changed · limited boolean signal',to:null};
+ }
+
  if(medical.test(q))return {title:'Medical nutrition safety boundary',
   answer:'Nutrition OS cannot diagnose or prescribe diets for medical conditions, pregnancy, children, allergies or disordered eating. Seek guidance from a qualified clinician or registered dietitian. Seek urgent care for severe symptoms.',
   source:'Safety policy · no clinical engine or validated allergies',to:null};
