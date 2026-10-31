@@ -93,7 +93,7 @@ export async function certifyStaging(env=process.env,options={}){
    proof.gates.identity_isolation=safeGate('verified','Unsigned and header-forged identity requests rejected');
   }catch(e){proof.gates.identity_isolation=safeGate('blocked',e.code??'UNAUTHORIZED_TEST_FAILED');}
  }
- let signed=false;
+ let signed=false,signedSubject=null;
  if(api&&token){
   try{
    const r=await send(api,'/api/v1/nutrition/session',{token});
@@ -102,6 +102,7 @@ export async function certifyStaging(env=process.env,options={}){
     ||r.body.data.identitySource!=='kernel_verified_jwks')throw fail('REAL_KERNEL_USER_IDENTITY_UNVERIFIED');
    if(!Array.isArray(r.body.data.scopes)||!r.body.data.scopes.includes('nutrition:read'))
      throw fail('MISSING_NUTRITION_READ_SCOPE');
+   signedSubject={userId:r.body.data.userId,tenantId:r.body.data.tenantId};
    signed=true;
    proof.gates.identity_authentication=safeGate('verified','Valid Kernel JWKS-issued user JWT scoped to signed user+tenant; no token stored');
   }catch(e){proof.gates.identity_authentication=safeGate('blocked',e.code??'SIGNED_IDENTITY_FAILED');}
@@ -116,7 +117,11 @@ export async function certifyStaging(env=process.env,options={}){
    proof.gates.kernel_event_mesh=safeGate('blocked','Live bidirectional signed event receipt and acknowledgement not independently proven');
   }catch(e){proof.gates.kernel_authority=safeGate('blocked',e.code??'KERNEL_STATUS_FAILED');}
  }
- if(api&&signed&&env.NUTRITION_STAGING_SYNTHETIC_ACCOUNT==='true'&&env.NUTRITION_STAGING_ALLOW_MUTATION==='true'){
+ const expectedSubject={userId:env.NUTRITION_STAGING_TEST_USER_ID,
+  tenantId:env.NUTRITION_STAGING_TEST_TENANT_ID};
+ const syntheticBound=isUuid(expectedSubject.userId)&&isUuid(expectedSubject.tenantId)&&
+  signedSubject?.userId===expectedSubject.userId&&signedSubject?.tenantId===expectedSubject.tenantId;
+ if(api&&signed&&syntheticBound&&env.NUTRITION_STAGING_SYNTHETIC_ACCOUNT==='true'&&env.NUTRITION_STAGING_ALLOW_MUTATION==='true'){
   try{
    const path='/api/v1/nutrition/foods',title='STAGING-CERT-'+randomUUID();
    const body={name:title,servingLabel:'one synthetic test portion',energyKcal:0,
@@ -140,7 +145,7 @@ export async function certifyStaging(env=process.env,options={}){
     'One signed synthetic food was written, deduplicated and soft-retired; no user content exported');
   }catch(e){proof.gates.synthetic_write_idempotency=safeGate('blocked',e.code??'SYNTHETIC_WORKFLOW_FAILED');}
  }else proof.gates.synthetic_write_idempotency=safeGate('blocked',
-  'Requires explicit synthetic account and mutation authorization; cannot operate on real-user records');
+  'Requires a verified synthetic user and matching expected tenant/user IDs plus explicit mutation authorization');
  proof.gates.family_authority=safeGate('blocked',
   'Signed external Family OS membership acceptance/revocation E2E proof not supplied');
  proof.gates.privacy_and_safety=safeGate('blocked',
