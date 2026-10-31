@@ -17,6 +17,11 @@ export async function consumeKernelEvent(db:SqlClient,a:BridgeActor,raw:unknown)
  if(when>now+120000||when<now-7*86400000)
   throw invalid('KERNEL_EVENT_WINDOW','An inbound event must be from the last seven days, without future timestamps.');
  await requireGrant(db,a,contract.scope);
+ // Never replay events from a prior consent epoch after Kernel renewed or revoked grants.
+ const authority=(await db.query('SELECT asserted_at FROM nutrition.kernel_binding WHERE tenant_id=$1 AND user_id=$2',
+  own(a))).rows[0];
+ if(!authority||when<Date.parse(authority.asserted_at))
+  throw invalid('KERNEL_EVENT_BEFORE_CONSENT','An external event cannot predate the current signed Kernel authority.',403);
  const insert=(await db.query('INSERT INTO nutrition.event_inbox '+
  '(tenant_id,user_id,source_event_id,source,event_type) VALUES($1,$2,$3,$4,$5) '+
  'ON CONFLICT DO NOTHING RETURNING id',
@@ -31,10 +36,11 @@ export async function consumeKernelEvent(db:SqlClient,a:BridgeActor,raw:unknown)
   const expires=Math.min(Date.parse(p.expiresAt),Date.now()+24*3600000);
   if(p.active&&expires<=Date.now())throw invalid('FAMILY_ATTESTATION_EXPIRED','Active family membership requires future expiry.');
   await db.query('INSERT INTO nutrition.kernel_family_attestation '+
-  '(tenant_id,user_id,household_id,role,active,expires_at,source_event_id) VALUES($1,$2,$3,$4,$5,$6,$7) '+
+  '(tenant_id,user_id,household_id,role,active,expires_at,asserted_at,source_event_id) VALUES($1,$2,$3,$4,$5,$6,$7,$8) '+
   'ON CONFLICT(tenant_id,user_id,household_id) DO UPDATE SET role=EXCLUDED.role,active=EXCLUDED.active, '+
-  'expires_at=EXCLUDED.expires_at,source_event_id=EXCLUDED.source_event_id,updated_at=now()',
-  [...own(a),p.householdId,p.role,p.active,new Date(Math.max(Date.now()+1000,expires)).toISOString(),event.eventId]);
+  'expires_at=EXCLUDED.expires_at,asserted_at=EXCLUDED.asserted_at,source_event_id=EXCLUDED.source_event_id,updated_at=now() ' +
+  'WHERE EXCLUDED.asserted_at>nutrition.kernel_family_attestation.asserted_at',
+  [...own(a),p.householdId,p.role,p.active,new Date(Math.max(Date.now()+1000,expires)).toISOString(),event.occurredAt,event.eventId]);
  }else if(event.eventType==='kernel.plan.decision'){
   const p=payload as z.infer<typeof kernelInbound['kernel.plan.decision']['schema']>;
   const row=(await db.query('UPDATE nutrition.kernel_schedule_proposal SET state=$4,kernel_decision_id=$5,decided_at=now() '+
