@@ -42,6 +42,7 @@ CREATE TABLE nutrition.kernel_family_attestation (
  household_id uuid NOT NULL,
  role text NOT NULL CHECK(role IN ('editor','viewer')),
  active boolean NOT NULL,expires_at timestamptz NOT NULL,
+ asserted_at timestamptz NOT NULL,
  source_event_id uuid NOT NULL,updated_at timestamptz NOT NULL DEFAULT now(),
  PRIMARY KEY(tenant_id,user_id,household_id),
  FOREIGN KEY(tenant_id,user_id) REFERENCES nutrition.kernel_binding(tenant_id,user_id) ON DELETE CASCADE
