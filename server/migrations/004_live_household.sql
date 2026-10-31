@@ -120,6 +120,12 @@ CREATE FUNCTION nutrition.member_update_guard() RETURNS trigger LANGUAGE plpgsql
 DECLARE actor uuid;
 BEGIN
  actor:=NULLIF(current_setting('app.user_id',true),'')::uuid;
+ IF NEW.tenant_id IS DISTINCT FROM OLD.tenant_id
+    OR NEW.household_id IS DISTINCT FROM OLD.household_id
+    OR NEW.owner_user_id IS DISTINCT FROM OLD.owner_user_id
+    OR NEW.member_user_id IS DISTINCT FROM OLD.member_user_id THEN
+   RAISE EXCEPTION 'Identity/household binding is immutable' USING ERRCODE='42501';
+ END IF;
  IF actor IS DISTINCT FROM OLD.owner_user_id THEN
    IF actor IS DISTINCT FROM OLD.member_user_id
      OR OLD.state <> 'invited' OR NEW.state <> 'accepted'

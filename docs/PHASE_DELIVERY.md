@@ -51,3 +51,10 @@
 - Transactional event outbox, minimal audit, request idempotency and leased test-sink dispatcher.
 - Frontend continues as a sample-only preview; integration occurs in Phase 6.
 - Documentation: `PHASE_5_DELIVERY.md`, `PHASE_5_API_CONTRACT.md`.
+
+## Phase 6 — Authenticated frontend/backend integration
+- Distinct API-connected premium workspace for personal nutrition, planning, resources, explainable insights and private-by-default family kitchen sharing.
+- PostgreSQL migration 004 for hydration, revisions, grocery list status and RLS-secured shared kitchen tables.
+- Only user-entered observations appear in signed-in state; no synthetic personal data is imported or used on errors.
+- The original Pages experience remains an explicitly labeled demo, with no live API claims.
+- See PHASE_6_DELIVERY.md and PHASE_6_API_ADDENDUM.md for workflows, identities, limitations and local setup.

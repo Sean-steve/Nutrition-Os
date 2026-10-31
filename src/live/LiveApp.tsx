@@ -23,7 +23,7 @@ const mainNav=[
 ] as const;
 const secondNav=[['assistant','Nutrition Guide',Sparkles],['profile','My Profile',Settings],['privacy','Privacy',ShieldCheck],['integrations','Integrations',Signpost]] as const;
 type ModeProps={onPreview:()=>void};
-const devLocal=(import.meta.env.DEV as boolean) && (['localhost','127.0.0.1'].includes(window.location.hostname));
+const devLocal=(import.meta.env.DEV as boolean) && typeof window!=='undefined' && (['localhost','127.0.0.1'].includes(window.location.hostname));
 function errorText(error:unknown):string{
  if(error instanceof LiveApiError)return error.message+(error.correlationId?' · Reference '+error.correlationId.slice(0,8):'');
  if(error instanceof Error){
@@ -123,7 +123,7 @@ export default function LiveApp({onPreview}:ModeProps){
   finally{setBusy(false);}
  },[client,date,busy,token]);
  function signOut(){sequence.current++;client?.clear();setToken(null);setData(null);setSuccess('');setError('');}
- const offline=token&&!data;
+ const offline=token&&!data&&!busy;
  if(!token)return <SignIn onSignIn={setToken} onPreview={onPreview}/>;
  const props=data&&client?{client,data,date,route,busy,perform,navigate,setDate}:null;
  const search=mainNav.concat(secondNav as unknown as typeof mainNav).filter(x=>x[1].toLowerCase().includes(query.trim().toLowerCase()));
@@ -155,7 +155,7 @@ export default function LiveApp({onPreview}:ModeProps){
         </div>
         {error&&<div className="lv-error" role="alert"><AlertTriangle size={18}/><span>{error}</span><button type="button" onClick={()=>setError('')} aria-label="Dismiss error"><X size={16}/></button></div>}
         {success&&<div className="lv-success" role="status"><CheckCircle2 size={18}/>{success}<button type="button" onClick={()=>setSuccess('')} aria-label="Dismiss message"><X size={16}/></button></div>}
-        {offline?<section className="panel lv-panel"><Empty title="Nutrition API unavailable" description="No private data was loaded. Verify the server, token, network, PostgreSQL migrations and allowed origin before retrying." action={<button type="button" className="outlined-button" disabled={busy} onClick={()=>setRefresh(n=>n+1)}>Retry connection <ArrowRight size={15}/></button>}/></section>:data&&props?<CurrentScreen {...props}/>:<Loading/>}
+        {busy&&!data?<Loading/>:offline?<section className="panel lv-panel"><Empty title="Nutrition API unavailable" description="No private data was loaded. Verify the server, token, network, PostgreSQL migrations and allowed origin before retrying." action={<button type="button" className="outlined-button" disabled={busy} onClick={()=>setRefresh(n=>n+1)}>Retry connection <ArrowRight size={15}/></button>}/></section>:data&&props?<CurrentScreen {...props}/>:<Loading/>}
         <footer className="page-footer">Nutrition OS · Phase 6 API-connected workspace <span>Logged facts only · Incomplete observations are unknown · Not medical advice</span></footer>
       </main>
     </div>

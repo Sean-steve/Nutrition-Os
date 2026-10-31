@@ -49,6 +49,7 @@ export function ProfileScreen({p}:{p:LiveProps}){
  const profile=p.data.profile,goals=p.data.goals;
  const [name,setName]=useState(profile?.display_name??''),[diet,setDiet]=useState(profile?.diet_style??'flexible');
  const [excluded,setExcluded]=useState(profile?.excluded_foods??'');
+ const [localError,setLocalError]=useState('');
  const [mealFrequency,setMealFrequency]=useState(String(profile?.preferences?.preferredMeals??3));
  const [units,setUnits]=useState(String(profile?.preferences?.units??'metric'));
  const [targets,setTargets]=useState<Record<string,string>>(Object.fromEntries(Object.entries(profile?.targets??{}).map(([k,v])=>[k,String(v)])));
@@ -56,8 +57,8 @@ export function ProfileScreen({p}:{p:LiveProps}){
  const targetKeys=[['energyKcal','Energy · kcal'],['proteinG','Protein · g'],['carbsG','Carbs · g'],['fatG','Fat · g'],['hydrationL','Hydration · L']];
  async function saveProfile(e:FormEvent<HTMLFormElement>){
   e.preventDefault();const result:Record<string,number>={};
-  for(const [key] of targetKeys){if(targets[key]?.trim()){const num=Number(targets[key]);if(!Number.isFinite(num)||num<=0)throw new Error('Targets must be positive finite values.');result[key]=num;}}
-  await p.perform(()=>p.client.put('/profile',{displayName:name.trim(),dietStyle:diet,excludedFoods:excluded.trim(),
+  for(const [key] of targetKeys){if(targets[key]?.trim()){const num=Number(targets[key]);if(!Number.isFinite(num)||num<=0){setLocalError('Targets must be finite positive numbers.');return;}result[key]=num;}}
+  setLocalError('');await p.perform(()=>p.client.put('/profile',{displayName:name.trim(),dietStyle:diet,excludedFoods:excluded.trim(),
     preferences:{preferredMeals:Number(mealFrequency),units,onboardingComplete:true},targets:result}),'Profile and targets saved in PostgreSQL.');
  }
  async function addGoal(e:FormEvent<HTMLFormElement>){e.preventDefault();
@@ -75,7 +76,7 @@ export function ProfileScreen({p}:{p:LiveProps}){
     <Field title="Measurement preference"><select value={units} onChange={e=>setUnits(e.target.value)}><option value="metric">Metric</option><option value="imperial">Imperial</option></select></Field>
     <h3>Optional user-selected targets</h3><p className="lv-help">Leave blank rather than accepting fabricated clinical requirements. This app does not calculate medically appropriate targets.</p>
     <div className="lv-form-grid">{targetKeys.map(([k,label])=><Field title={label} key={k}><input min=".01" step="any" type="number" value={targets[k]??''} onChange={e=>setTargets(v=>({...v,[k]:e.target.value}))} placeholder="Not configured"/></Field>)}</div>
-    <button type="submit" className="primary-button" disabled={p.busy}><CheckCircle2 size={16}/> Save personal profile</button>
+    {localError&&<p className="lv-error" role="alert">{localError}</p>}<button type="submit" className="primary-button" disabled={p.busy}><CheckCircle2 size={16}/> Save personal profile</button>
    </form>
   </Card><div className="lv-stack"><Card title="Time-bound nutrition goals" detail="Explicit goals only; no autonomous prescription.">
    <form className="lv-form" onSubmit={addGoal}><Field title="Nutrient or hydration metric"><select value={metric} onChange={e=>setMetric(e.target.value)}><option value="energy_kcal">Energy · kcal</option><option value="protein_g">Protein · g</option><option value="carbs_g">Carbohydrates · g</option><option value="fat_g">Fat · g</option><option value="hydration_l">Water · L</option></select></Field>
@@ -168,6 +169,7 @@ export function MealsScreen({p}:{p:LiveProps}){
  const [portion,setPortion]=useState('1');
  const [water,setWater]=useState(String(p.data.water.observedL??''));
  const [dayFilter,setDayFilter]=useState(p.route==='today'?p.date:'');
+ useEffect(()=>{if(p.route==='today')setDayFilter(p.date);},[p.route,p.date]);
  const meals=p.data.meals.filter(m=>!dayFilter||dateOnly(m.consumed_on)===dayFilter);
  const today=p.data.state;
  useEffect(()=>{setWater(String(p.data.water.observedL??''));},[p.data.water.observedL]);
@@ -188,7 +190,7 @@ export function MealsScreen({p}:{p:LiveProps}){
  }
  async function submit(e:FormEvent<HTMLFormElement>){e.preventDefault();
   if(!items.length)return;
-  const body={consumedOn:p.date,slot,name:name.trim(),note,items:items.map(i=>({foodId:i.foodId,servings:Number(i.servings)}))};
+  const body={consumedOn:editing&&opened?dateOnly(opened.consumed_on):p.date,slot,name:name.trim(),note,items:items.map(i=>({foodId:i.foodId,servings:Number(i.servings)}))};
   const ok=await p.perform(()=>editing?p.client.put('/meals/'+editing.id,{...body,expectedRevision:editing.revision}):p.client.post('/meals',body),
    editing?'Observed meal corrected. Snapshots have been recalculated.':'Observed meal saved. Daily intake updated from the database.');
   if(ok)reset();
