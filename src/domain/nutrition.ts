@@ -3,6 +3,7 @@ export type MealStatus = 'logged' | 'planned' | 'suggested';
 export type MealSlot = 'Breakfast' | 'Lunch' | 'Snack' | 'Dinner';
 export interface MealRecord {
   id: string;
+  recordedOn?: string; // ISO date, preview-only; older fixtures belong to SAMPLE_DATE
   slot: MealSlot;
   name: string;
   details: string;

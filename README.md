@@ -5,7 +5,8 @@
 ## Status
 - **Phase 0:** Fresh repository bootstrap and architectural reconciliation.
 - **Phase 1:** Premium interactive **frontend preview**. All meal records, metrics, recommendations, grocery quantities, and family references are **sample data** and remain in browser memory only. This is NOT an authenticated system or medical advice.
-- **Phases 2–8:** Complete flows, secure APIs, nutrition services, PostgreSQL, intelligence, Kernel integration and production certification are future work.
+- **Phase 2:** Personal nutrition screens — onboarding, profile, Today, Meals, Foods, Recipes, Goals and Progress — are implemented as a **frontend-only interactive preview**, with date-aware meal records, corrections, recipe snapshots, editable example targets and observed-data charts.
+- **Phases 3–8:** Planning and household resources, intelligence, real APIs, PostgreSQL, Kernel integration and production certification are future work.
 
 ## Local run
 ```sh
@@ -24,7 +25,10 @@ When Pages is configured to use **GitHub Actions** as its build/deployment sourc
 src/
   domain/         deterministic frontend preview calculations
   data/           typed and clearly marked sample fixtures
-  ui/             application shell, dashboard and shared design language
+  ui/             dashboard, personal experience, reusable design language
+  domain/personal.ts     example profile, goals, recipe and date calculations
+  data/foodLibrary.ts   additional illustrative foods
+  data/personalFixtures.ts  illustrative recipes
 docs/
   ARCHITECTURE_RECONCILIATION.md
   PHASE_DELIVERY.md
@@ -35,3 +39,6 @@ docs/
 
 ## Governance
 Do not treat dashboard scores as actual clinical states. Missing meal logs are incomplete observations, not observed absence of intake. Family-only shared logistics are surfaced separately from sensitive individual health state. Integrations, authentication, AI calls and persistence are not implemented in Phases 0–1.
+
+## Phase 2 handoff
+See [Phase 2 delivery](docs/PHASE_2_DELIVERY.md) for implemented screens and data boundaries. All edits remain in memory: refreshing the page resets the example workspace. Pages still needs repository-level activation before the site can be verified live.

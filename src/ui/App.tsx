@@ -8,13 +8,16 @@ import {
   type LucideIcon,
 } from 'lucide-react';
 import {
-  DAILY_EXAMPLE_TARGETS, calculateLoggedTotals, calculateTrackingAlignment,
+  calculateLoggedTotals, calculateTrackingAlignment,
   clampProgress, formatKes, remaining, type FoodChoice, type GroceryItem, type MealRecord, type MealSlot,
 } from '../domain/nutrition';
 import {
   SAMPLE_DATE, sampleFoodChoices, sampleGroceries, sampleMeals, sampleRecommendations,
   sampleRoadmap, sampleWeeklyProgress,
 } from '../data/sample';
+import { DEFAULT_PROFILE, DEFAULT_TARGETS, mealsOnDate, type NutritionProfile, type NutritionTargets, type RecipeRecord } from '../domain/personal';
+import { sampleRecipes } from '../data/personalFixtures';
+import PersonalExperience, { type PersonalRoute } from './PersonalExperience';
 
 type RouteId = 'dashboard' | keyof typeof sampleRoadmap;
 type NutriTab = 'macros' | 'micros' | 'other';
@@ -28,6 +31,7 @@ const NAV_ITEMS: { id: RouteId; label: string; icon: LucideIcon }[] = [
   { id: 'meals', label: 'Meals', icon: Utensils },
   { id: 'planner', label: 'Meal Planner', icon: CalendarDays },
   { id: 'foods', label: 'Foods & Recipes', icon: BookOpen },
+  { id: 'recipes', label: 'Recipe Studio', icon: Utensils },
   { id: 'groceries', label: 'Groceries', icon: ShoppingBasket },
   { id: 'inventory', label: 'Inventory', icon: Package },
   { id: 'goals', label: 'Goals', icon: Target },
@@ -39,6 +43,7 @@ const SECONDARY_NAV: { id: RouteId; label: string; icon: LucideIcon }[] = [
   { id: 'assistant', label: 'AI Nutrition Guide', icon: Sparkles },
   { id: 'integrations', label: 'Integrations', icon: Activity },
   { id: 'privacy', label: 'Privacy & Sharing', icon: ShieldCheck },
+  { id: 'profile', label: 'Nutrition Profile', icon: Heart },
   { id: 'settings', label: 'Settings', icon: Settings },
 ];
 
@@ -91,12 +96,12 @@ function MealTimeline({ meals, onAdd, onView, onNavigate }: { meals: MealRecord[
   </section>;
 }
 
-function NutrientsPanel({ tab, setTab, totals, navigate }: { tab: NutriTab; setTab: (tab: NutriTab) => void; totals: ReturnType<typeof calculateLoggedTotals>; navigate: (id: RouteId) => void }) {
+function NutrientsPanel({ tab, setTab, totals, navigate, targets }: { tab: NutriTab; setTab: (tab: NutriTab) => void; totals: ReturnType<typeof calculateLoggedTotals>; navigate: (id: RouteId) => void; targets: NutritionTargets }) {
   const macro = [
-    { name: 'Protein', value: totals.proteinG, target: 140, unit: 'g', color: 'blue' as const },
-    { name: 'Carbs', value: totals.carbsG, target: 325, unit: 'g', color: 'orange' as const },
-    { name: 'Fat', value: totals.fatG, target: 85, unit: 'g', color: 'amber' as const },
-    { name: 'Energy', value: totals.energyKcal, target: 2300, unit: 'kcal', color: 'green' as const },
+    { name: 'Protein', value: totals.proteinG, target: targets.proteinG, unit: 'g', color: 'blue' as const },
+    { name: 'Carbs', value: totals.carbsG, target: targets.carbsG, unit: 'g', color: 'orange' as const },
+    { name: 'Fat', value: totals.fatG, target: targets.fatG, unit: 'g', color: 'amber' as const },
+    { name: 'Energy', value: totals.energyKcal, target: targets.energyKcal, unit: 'kcal', color: 'green' as const },
   ];
   return <section className="panel nutrients-panel">
     <CardHeading title="Key nutrients" action="View details" onAction={() => navigate('insights')}/>
@@ -107,8 +112,8 @@ function NutrientsPanel({ tab, setTab, totals, navigate }: { tab: NutriTab; setT
       <div className="nutrient-empty"><Info size={26}/><b>{tab === 'micros' ? 'Micronutrient tracking' : 'Hydration & fibre'}</b><p>{tab === 'micros' ? 'Detailed vitamin and mineral data depends on verified food composition. This is part of the real nutrition engine.' : 'Hydration is shown above. Fibre and food diversity require validated food nutrient data.'}</p><button className="outlined-button" type="button" onClick={() => navigate('insights')}>See upcoming insights <ArrowRight size={14}/></button></div>}
     <div className="goals-subsection"><div className="subsection-title"><h3>Nutrition goals</h3><button className="text-action" onClick={() => navigate('goals')} type="button">View goals <ArrowRight size={14}/></button></div>
       {[
-        { label: 'Daily protein target', icon: Activity, value: clampProgress(totals.proteinG, 140), color: 'green' as const },
-        { label: 'Energy target', icon: Flame, value: clampProgress(totals.energyKcal, 2300), color: 'orange' as const },
+        { label: 'Daily protein target', icon: Activity, value: clampProgress(totals.proteinG, targets.proteinG), color: 'green' as const },
+        { label: 'Energy target', icon: Flame, value: clampProgress(totals.energyKcal, targets.energyKcal), color: 'orange' as const },
         { label: 'Meal consistency', icon: CalendarDays, value: 67, color: 'blue' as const },
       ].map(g => <div className="goal-row" key={g.label}><span className="goal-icon"><g.icon size={17}/></span><span className="goal-name">{g.label}</span><ProgressBar value={g.value} color={g.color}/><strong>{g.value}%</strong></div>)}
       <p className="subdued micro">Targets shown are illustrative, not personalized clinical recommendations.</p>
@@ -145,18 +150,18 @@ function FamilyCard({ navigate }: { navigate: (id:RouteId)=>void }) {
   </section>;
 }
 
-function Guide({ totalProtein, onPlan, onNavigate, notify }: { totalProtein: number; onPlan: (id: string)=>void; onNavigate: (id:RouteId)=>void; notify: (n:Notice)=>void }) {
+function Guide({ totalProtein, onPlan, onNavigate, notify, targets }: { totalProtein: number; targets: NutritionTargets; onPlan: (id: string)=>void; onNavigate: (id:RouteId)=>void; notify: (n:Notice)=>void }) {
   const [start,setStart]=useState(0);
   const [input,setInput]=useState('');
   const [reply,setReply]=useState('');
   const options=[0,1,2].map(i=>sampleRecommendations[(start+i)%sampleRecommendations.length]);
-  const gap=remaining(totalProtein, DAILY_EXAMPLE_TARGETS.proteinG);
+  const gap=remaining(totalProtein, targets.proteinG);
   function ask(e:FormEvent<HTMLFormElement>) {
     e.preventDefault();
     const q=input.trim();
     if(!q)return;
     const lower=q.toLowerCase();
-    if(lower.includes('protein')) setReply(`The sample meal log has ${Math.round(totalProtein)}g of protein against an illustrative 140g target. This does not establish actual intake.`);
+    if(lower.includes('protein')) setReply(`The sample meal log has ${Math.round(totalProtein)}g of protein against an illustrative ${targets.proteinG}g target. This does not establish actual intake.`);
     else if(lower.includes('plan') || lower.includes('dinner')) setReply('You can choose a dinner option above to update the demo plan. Full adaptive planning will arrive in Phase 3.');
     else if(lower.includes('groc') || lower.includes('inventory')) setReply('The sample basket is under Grocery & Inventory. Real household inventory connections are planned for Phase 3.');
     else setReply('This is a rule-based dashboard preview, not a connected AI model. The policy-controlled assistant arrives in Phase 4.');
@@ -176,34 +181,34 @@ function Guide({ totalProtein, onPlan, onNavigate, notify }: { totalProtein: num
   </aside>;
 }
 
-function Dashboard({ meals, waterL, groceries, toggleGrocery, onAdd, onViewMeal, onPlanDinner, navigate, notify, isSampleDay, onReset }: {
+function Dashboard({ meals, waterL, groceries, toggleGrocery, onAdd, onViewMeal, onPlanDinner, navigate, notify, isSampleDay, onReset, targets, waterObserved, displayName }: {
   meals: MealRecord[]; waterL:number; groceries:GroceryItem[]; toggleGrocery:(id:string)=>void;
   onAdd:()=>void; onViewMeal:(m:MealRecord)=>void; onPlanDinner:(id:string)=>void;
-  navigate:(id:RouteId)=>void; notify:(n:Notice)=>void; isSampleDay:boolean; onReset:()=>void;
+  navigate:(id:RouteId)=>void; notify:(n:Notice)=>void; isSampleDay:boolean; onReset:()=>void; targets:NutritionTargets; waterObserved:boolean; displayName:string;
 }) {
   const [nutriTab,setNutriTab]=useState<NutriTab>('macros');
   const [groceryTab,setGroceryTab]=useState<GroceryTab>('list');
   const totals=useMemo(()=>calculateLoggedTotals(meals),[meals]);
-  const energyPct=clampProgress(totals.energyKcal,DAILY_EXAMPLE_TARGETS.energyKcal);
-  const proteinPct=clampProgress(totals.proteinG,DAILY_EXAMPLE_TARGETS.proteinG);
-  const waterPct=clampProgress(waterL,DAILY_EXAMPLE_TARGETS.hydrationL);
-  const overall=calculateTrackingAlignment(energyPct,proteinPct,waterPct);
+  const energyPct=clampProgress(totals.energyKcal,targets.energyKcal);
+  const proteinPct=clampProgress(totals.proteinG,targets.proteinG);
+  const waterPct=waterObserved?clampProgress(waterL,targets.hydrationL):0;
+  const overall=waterObserved?calculateTrackingAlignment(energyPct,proteinPct,waterPct):Math.round((energyPct+proteinPct)/2);
   return <div className="dashboard">
-    <header className="hero"><div className="hero-copy"><span className="eyebrow"><Leaf size={14}/> PERSONAL NUTRITION</span><h1>Good morning, welcome back <span className="wave">👋</span></h1><p>Here's your nutrition picture today.</p></div>
+    <header className="hero"><div className="hero-copy"><span className="eyebrow"><Leaf size={14}/> PERSONAL NUTRITION</span><h1>Good morning{displayName ? ', '+displayName : ', welcome back'} <span className="wave">👋</span></h1><p>Here's your nutrition picture today.</p></div>
       <svg className="hero-landscape" viewBox="0 0 600 160" aria-hidden="true" preserveAspectRatio="xMidYMid slice"><defs><linearGradient id="sky" x1="0" x2="1" y1="0" y2="1"><stop stopColor="#e9e9d7"/><stop offset="1" stopColor="#c6e3d5"/></linearGradient><linearGradient id="hill" x1="0" x2="0" y1="0" y2="1"><stop stopColor="#699f75"/><stop offset="1" stopColor="#1e634c"/></linearGradient></defs><rect width="600" height="160" fill="url(#sky)"/><circle cx="438" cy="30" r="22" fill="#fff7d6" opacity=".8"/><path d="M0 100 Q110 16 220 95 Q329 0 450 90 Q537 32 600 97 V160 H0" fill="#aac6a7" opacity=".55"/><path d="M0 117 Q150 72 300 116 Q436 56 600 112 V160 H0" fill="#84ab81" opacity=".62"/><path d="M0 135 Q160 96 315 131 Q460 95 600 127 V160 H0" fill="url(#hill)" opacity=".83"/></svg>
       <div className="hero-quote"><Leaf size={18}/><span>Better nutrition, one choice at a time.</span></div>
     </header>
     {!isSampleDay ? <section className="panel empty-date"><CalendarDays size={34}/><h2>No sample records for this date</h2><p>Missing records are unknown intake, not zero intake. The demo figures are only available for its example day.</p><button className="primary-button" type="button" onClick={onReset}>Return to sample day <ArrowRight size={16}/></button></section> :
     <>
     <div className="stats-grid"><article className="summary-card score-card"><RadialProgress value={overall} size="large"/><div><span className="metric-label">Goal alignment</span><h2>Daily overview</h2><p>Illustrative progress from logged example meals.</p></div></article>
-      <SummaryCard icon={Flame} title="Energy" value={`${totals.energyKcal.toLocaleString()} / 2,300 kcal`} detail={`${remaining(totals.energyKcal,2300)} kcal to example target`} progress={energyPct} color="orange"/>
-      <SummaryCard icon={Activity} title="Protein" value={`${Math.round(totals.proteinG)} / 140 g`} detail={`${Math.round(remaining(totals.proteinG,140))}g to example target`} progress={proteinPct} color="blue"/>
-      <SummaryCard icon={Droplets} title="Hydration" value={`${waterL.toFixed(2).replace(/0$/,'')} / 2.5 L`} detail={`${remaining(waterL,2.5).toFixed(2)} L to example target`} progress={waterPct} color="cyan"/>
+      <SummaryCard icon={Flame} title="Energy" value={`${totals.energyKcal.toLocaleString()} / ${targets.energyKcal.toLocaleString()} kcal`} detail={`${remaining(totals.energyKcal,targets.energyKcal)} kcal to example target`} progress={energyPct} color="orange"/>
+      <SummaryCard icon={Activity} title="Protein" value={`${Math.round(totals.proteinG)} / ${targets.proteinG} g`} detail={`${Math.round(remaining(totals.proteinG,targets.proteinG))}g to example target`} progress={proteinPct} color="blue"/>
+      <SummaryCard icon={Droplets} title="Hydration" value={waterObserved ? `${waterL.toFixed(2).replace(/0$/,"")} / ${targets.hydrationL} L` : "Not recorded"} detail={waterObserved ? `${remaining(waterL,targets.hydrationL).toFixed(2)} L to example target` : "No hydration observation for this date"} progress={waterPct} color="cyan"/>
     </div>
     <div className="dashboard-content"><div className="dashboard-main">
-      <div className="mid-grid"><MealTimeline meals={meals} onAdd={onAdd} onView={onViewMeal} onNavigate={navigate}/><NutrientsPanel tab={nutriTab} setTab={setNutriTab} totals={totals} navigate={navigate}/></div>
+      <div className="mid-grid"><MealTimeline meals={meals} onAdd={onAdd} onView={onViewMeal} onNavigate={navigate}/><NutrientsPanel tab={nutriTab} setTab={setNutriTab} totals={totals} navigate={navigate} targets={targets}/></div>
       <div className="bottom-grid"><WeeklyCard navigate={navigate}/><GroceryCard groceries={groceries} toggleGrocery={toggleGrocery} tab={groceryTab} setTab={setGroceryTab} navigate={navigate}/><FamilyCard navigate={navigate}/></div>
-    </div><Guide totalProtein={totals.proteinG} onPlan={onPlanDinner} onNavigate={navigate} notify={notify}/></div>
+    </div><Guide totalProtein={totals.proteinG} targets={targets} onPlan={onPlanDinner} onNavigate={navigate} notify={notify}/></div>
     </>
     }
   </div>;
@@ -264,6 +269,9 @@ export default function App() {
   const [mobileOpen,setMobileOpen]=useState(false);
   const [view,setView]=useState<ViewMode>('personal');
   const [meals,setMeals]=useState<MealRecord[]>(sampleMeals);
+  const [profile,setProfile]=useState<NutritionProfile>(DEFAULT_PROFILE);
+  const [targets,setTargets]=useState<NutritionTargets>(DEFAULT_TARGETS);
+  const [recipes,setRecipes]=useState<RecipeRecord[]>(sampleRecipes);
   const [waterL,setWaterL]=useState(1.7);
   const [groceries,setGroceries]=useState<GroceryItem[]>(sampleGroceries);
   const [dayOffset,setDayOffset]=useState(0);
@@ -277,10 +285,16 @@ export default function App() {
   useEffect(()=>{const update=()=>setRoute(routeFromHash());window.addEventListener('hashchange',update);return()=>window.removeEventListener('hashchange',update);},[]);
   useEffect(()=>{if(!notice)return;const id=window.setTimeout(()=>setNotice(null),5000);return()=>window.clearTimeout(id);},[notice]);
   const date=useMemo(()=>{const d=new Date(`${SAMPLE_DATE}T12:00:00Z`);d.setUTCDate(d.getUTCDate()+dayOffset);return d.toLocaleDateString('en-KE',{weekday:'short',month:'short',day:'numeric',year:'numeric',timeZone:'UTC'});},[dayOffset]);
+  const activeDate=useMemo(()=>{const d=new Date(SAMPLE_DATE+'T12:00:00Z');d.setUTCDate(d.getUTCDate()+dayOffset);return d.toISOString().slice(0,10);},[dayOffset]);
   const nav=(id:RouteId)=>{setRoute(id);window.location.hash=id==='dashboard'?'#/':'#/'+id;setMobileOpen(false);setShowSearch(false);setProfileOpen(false);};
   const toggleGrocery=(id:string)=>setGroceries(prev=>prev.map(g=>g.id===id?{...g,purchased:!g.purchased}:g));
   function planDinner(id:string){const choice=sampleRecommendations.find(r=>r.id===id);if(!choice)return;setMeals(prev=>prev.map(m=>m.id==='m-dinner'?{...m,name:choice.title,emoji:choice.emoji,energyKcal:choice.energyKcal,proteinG:choice.proteinG,details:'Planned · not yet logged'}:m));}
-  function addMeal(meal:MealRecord){setMeals(prev=>[...prev,meal].sort((a,b)=>a.time.localeCompare(b.time)));setMealModal(false);setNotice({title:'Sample meal added',body:'Your preview totals were updated in memory. No data was saved to a server.'});}
+  function addMeal(meal:MealRecord){setMeals(prev=>[...prev,{...meal,recordedOn:meal.recordedOn??activeDate}].sort((a,b)=>a.time.localeCompare(b.time)));setMealModal(false);setNotice({title:'Sample meal added',body:'Your preview totals were updated in memory. No data was saved to a server.'});}
+  const personalRoutes:PersonalRoute[]=['onboarding','profile','today','meals','foods','recipes','goals','progress'];
+  const editMeal=(meal:MealRecord)=>setMeals(prev=>prev.map(m=>m.id===meal.id?meal:m));
+  const removeMeal=(id:string)=>{setMeals(prev=>prev.filter(m=>m.id!==id));setNotice({title:'Meal removed',body:'Example record removed from the session. No server data was changed.'});};
+  const saveRecipe=(recipe:RecipeRecord)=>setRecipes(prev=>prev.some(r=>r.id===recipe.id)?prev.map(r=>r.id===recipe.id?recipe:r):[...prev,recipe]);
+  const adjustWater=(delta:number)=>setWaterL(v=>Math.max(0,Math.min(10,Math.round((v+delta)*100)/100)));
   const foodResults=sampleFoodChoices.filter(f=>f.name.toLowerCase().includes(search.toLowerCase())).slice(0,5);
   return <div className="app-shell">
     <div className={`sidebar-overlay ${mobileOpen?'show':''}`} onClick={()=>setMobileOpen(false)} aria-hidden="true"/>
@@ -297,12 +311,12 @@ export default function App() {
       </div></div>
       <div className="topbar-right"><div className="date-picker"><button className="icon-button" type="button" onClick={()=>setDayOffset(n=>Math.max(-30,n-1))} aria-label="Previous day"><ChevronLeft size={17}/></button><span><CalendarDays size={16}/>{date}</span><button type="button" className="icon-button" onClick={()=>setDayOffset(n=>Math.min(30,n+1))} aria-label="Next day"><ChevronRight size={17}/></button></div>
       <div className="popover-wrap"><button type="button" className="icon-button bell-button" onClick={()=>{setNotifications(!notifications);setProfileOpen(false);}} aria-label="Preview notifications"><Bell size={20}/><span className="notification-dot">2</span></button>{notifications&&<div className="top-popover notification-popover"><h3>Sample notifications</h3><p><Clock size={15}/> Dinner is planned for 19:00</p><p><ShoppingBasket size={15}/> 5 grocery items still unchecked</p><small>Illustrative, not live reminders.</small></div>}</div>
-      <div className="profile-wrap"><button type="button" className="profile-button" onClick={()=>{setProfileOpen(!profileOpen);setNotifications(false);}} aria-expanded={profileOpen}><span className="avatar">A</span><span className="profile-copy"><b>Demo profile</b><small>{view==='personal'?'Personal view':'Family view'}</small></span><ChevronDown size={16}/></button>{profileOpen&&<div className="top-popover profile-popover"><button type="button" onClick={()=>{setView('personal');nav('dashboard');}}>Personal dashboard</button><button type="button" onClick={()=>{setView('family');nav('dashboard');}}>Family dashboard</button><span>Sample session · no sign-in</span></div>}</div>
+      <div className="profile-wrap"><button type="button" className="profile-button" onClick={()=>{setProfileOpen(!profileOpen);setNotifications(false);}} aria-expanded={profileOpen}><span className="avatar">A</span><span className="profile-copy"><b>Demo profile</b><small>{view==='personal'?'Personal view':'Family view'}</small></span><ChevronDown size={16}/></button>{profileOpen&&<div className="top-popover profile-popover"><button type="button" onClick={()=>{setView('personal');nav('dashboard');}}>Personal dashboard</button><button type="button" onClick={()=>{setView('family');nav('dashboard');}}>Family dashboard</button><button type="button" onClick={()=>nav('profile')}>Nutrition profile</button><button type="button" onClick={()=>nav('onboarding')}>Run onboarding</button><span>Sample session · no sign-in</span></div>}</div>
       </div></header>
-      <main className="workspace"><div className="workspace-toolbar"><span className="preview-badge"><span className="preview-dot"/> SAMPLE DATA · INTERACTIVE PREVIEW</span><div className="toolbar-actions"><button className="utility-btn" type="button" onClick={()=>{setWaterL(w=>Math.min(5,Math.round((w+.25)*100)/100));setNotice({title:'Hydration updated',body:'Added 250 ml to the example day. This change is temporary.'});}}><Droplets size={16}/> +250 ml water</button><button className="primary-button toolbar-add" type="button" onClick={()=>setMealModal(true)}><Plus size={17}/> Log meal</button></div></div>
-      {route==='dashboard' ? view==='personal'?<Dashboard meals={meals} waterL={waterL} groceries={groceries} toggleGrocery={toggleGrocery} onAdd={()=>setMealModal(true)} onViewMeal={setSelectedMeal} onPlanDinner={planDinner} navigate={nav} notify={setNotice} isSampleDay={dayOffset===0} onReset={()=>setDayOffset(0)}/>:<FamilyOverview navigate={nav}/> :
-        route==='family'?<FamilyOverview navigate={nav}/>:<ModulePreview route={route} navigate={nav}/>}
-      <footer className="page-footer">Nutrition OS · Phase 1 UI preview <span>Sample values only · Not medical advice · No account data is used</span></footer>
+      <main className="workspace"><div className="workspace-toolbar"><span className="preview-badge"><span className="preview-dot"/> SAMPLE DATA · INTERACTIVE PREVIEW</span><div className="toolbar-actions"><button className="utility-btn" type="button" disabled={dayOffset!==0} onClick={()=>{adjustWater(.25);setNotice({title:'Hydration updated',body:'Added 250 ml to the example day. This change is temporary.'});}}><Droplets size={16}/> +250 ml water</button><button className="primary-button toolbar-add" type="button" onClick={()=>setMealModal(true)}><Plus size={17}/> Log meal</button></div></div>
+      {route==='dashboard' ? view==='personal'?<Dashboard meals={mealsOnDate(meals,activeDate,SAMPLE_DATE)} waterL={dayOffset===0?waterL:0} waterObserved={dayOffset===0} displayName={profile.onboardingComplete?profile.displayName:""} targets={targets} groceries={groceries} toggleGrocery={toggleGrocery} onAdd={()=>setMealModal(true)} onViewMeal={setSelectedMeal} onPlanDinner={planDinner} navigate={nav} notify={setNotice} isSampleDay={dayOffset===0 || mealsOnDate(meals,activeDate,SAMPLE_DATE).some(m=>m.status==="logged")} onReset={()=>setDayOffset(0)}/>:<FamilyOverview navigate={nav}/> :
+        personalRoutes.includes(route as PersonalRoute)?<PersonalExperience key={route} route={route as PersonalRoute} meals={meals} activeDate={activeDate} waterL={waterL} profile={profile} targets={targets} recipes={recipes} foods={sampleFoodChoices} navigate={nav} onOpenMealLogger={()=>setMealModal(true)} onViewMeal={setSelectedMeal} onAddMeal={addMeal} onEditMeal={editMeal} onDeleteMeal={removeMeal} onSaveProfile={setProfile} onSaveTargets={setTargets} onSaveRecipe={saveRecipe} onDeleteRecipe={id=>setRecipes(prev=>prev.filter(r=>r.id!==id))} onAdjustWater={adjustWater} onNotice={(title,body)=>setNotice({title,body})}/>:route==='family'?<FamilyOverview navigate={nav}/>:<ModulePreview route={route} navigate={nav}/>}
+      <footer className="page-footer">Nutrition OS · Phase 2 personal nutrition preview <span>Sample values only · Not medical advice · No account data is used</span></footer>
       </main>
     </div>
     {notice&&<div className="toast" role="status"><div><CheckCircle2 size={20}/><strong>{notice.title}</strong></div><p>{notice.body}</p><button type="button" onClick={()=>setNotice(null)} aria-label="Dismiss notice"><X size={16}/></button></div>}
