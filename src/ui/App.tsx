@@ -1,10 +1,10 @@
-import { useEffect, useMemo, useState, type FormEvent } from 'react';
+import { useEffect, useMemo, useState, type CSSProperties, type FormEvent } from 'react';
 import {
   Activity, Apple, ArrowRight, BarChart3, Bell, BookOpen, CalendarDays,
-  Camera, Check, CheckCircle2, ChevronDown, ChevronLeft, ChevronRight, Clock,
-  Droplets, Flame, Heart, Home, Info, Leaf, LockKeyhole, Menu, MessageCircle,
-  Mic, Package, Plus, Search, Send, Settings, ShieldCheck, ShoppingBasket,
-  Sparkles, Target, TrendingUp, Users, Utensils, Wallet, X,
+  Check, CheckCircle2, ChevronDown, ChevronLeft, ChevronRight, Clock,
+  Droplets, Flame, Heart, Home, Info, Leaf, LockKeyhole, Menu,
+  Package, Plus, Search, Send, Settings, ShieldCheck, ShoppingBasket,
+  Sparkles, Target, TrendingUp, Users, Utensils, X,
   type LucideIcon,
 } from 'lucide-react';
 import {
@@ -50,7 +50,7 @@ function routeFromHash(): RouteId {
 }
 
 function RadialProgress({ value, color = 'green', size = 'normal' }: { value: number; color?: 'green'|'blue'|'amber'|'orange'; size?: 'normal'|'large' }) {
-  return <div className={`radial radial-${color} radial-${size}`} style={{ '--radial-pct': `${value}%` } as React.CSSProperties}>
+  return <div className={`radial radial-${color} radial-${size}`} style={{ '--radial-pct': `${value}%` } as CSSProperties}>
     <div className="radial-inner"><strong>{value}%</strong></div>
   </div>;
 }
