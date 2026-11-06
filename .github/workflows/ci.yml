@@ -57,6 +57,8 @@ jobs:
         run: npm --prefix server run build
       - name: PostgreSQL integration and RLS certification
         run: npm --prefix server run test:integration
+      - name: Syntax-check local startup and certification scripts
+        run: bash -n scripts/local/up.sh scripts/local/certify.sh
       - name: L1 local configuration and readiness regression tests
         run: node --test scripts/local/*.test.mjs
       - name: Staging configuration / identity fail-closed certification
@@ -126,10 +128,6 @@ jobs:
         run: |
           TOKEN="$(npm --prefix server run --silent dev:token)"
           printf 'E2E_TEST_TOKEN=%s\n' "$TOKEN" >> "$GITHUB_ENV"
-          FLOW_USER="$(node -e "process.stdout.write(require('node:crypto').randomUUID())")"
-          FLOW_TENANT="$(node -e "process.stdout.write(require('node:crypto').randomUUID())")"
-          FLOW_TOKEN="$(USER_ID="$FLOW_USER" TENANT_ID="$FLOW_TENANT" npm --prefix server run --silent dev:token)"
-          printf 'E2E_FLOW_TOKEN=%s\n' "$FLOW_TOKEN" >> "$GITHUB_ENV"
       - name: Desktop and mobile browser E2E / WCAG scan
         run: npm run test:e2e
       - name: Upload browser failure evidence (test-only data)
