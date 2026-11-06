@@ -19,9 +19,7 @@ USER_ID="$(node -e "process.stdout.write(require('node:crypto').randomUUID())")"
 TENANT_ID="$(node -e "process.stdout.write(require('node:crypto').randomUUID())")"
 export E2E_TEST_TOKEN
 E2E_TEST_TOKEN="$(USER_ID="$USER_ID" TENANT_ID="$TENANT_ID" npm --prefix server run --silent dev:token)"
-export E2E_FLOW_TOKEN
-E2E_FLOW_TOKEN="$(USER_ID="$(node -e "process.stdout.write(require('node:crypto').randomUUID())")" TENANT_ID="$(node -e "process.stdout.write(require('node:crypto').randomUUID())")" npm --prefix server run --silent dev:token)"
 unset USER_ID TENANT_ID
 npm run test:e2e
-unset E2E_TEST_TOKEN E2E_FLOW_TOKEN
+unset E2E_TEST_TOKEN
 echo 'Phase L1 local automated certification PASSED. Operator manual checks still required.'
