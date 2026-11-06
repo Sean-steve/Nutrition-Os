@@ -110,7 +110,8 @@ test('full synthetic nutrition lifecycle is persisted and all authenticated scre
  await open(page,'Meals','Meal History & Corrections');
  await expect(page.getByText('L1 observed '+unique,{exact:true})).toBeVisible();
  await open(page,'Family Kitchen','Family Nutrition Command Center');
- await expect(page.getByText('L1 kitchen '+unique,{exact:true})).toBeVisible();
+ await expect(page.locator('.lv-house-selector select')).toHaveValue(house.id);
+ await expect(page.locator('.lv-house-selector option').first()).toContainText('L1 kitchen '+unique);
  // Session token lives in memory; refresh must intentionally return to login.
  await page.reload();
  await expect(page.getByRole('heading',{name:'Your nutrition. Your records.'})).toBeVisible();
