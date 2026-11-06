@@ -92,3 +92,18 @@ The current full-system verdict is **NOT READY FOR PRODUCTION**: identity federa
 The Phase 8 baseline has passing CI and a deployed **sample-only** GitHub Pages preview. Phase 8.1 adds `infra/staging/` isolated PostgreSQL/API deployment templates, separate migration role/grants, digest-pinned image preflight, dedicated GitHub protected-environment staging API workflow and synthetic-account certification with **no silent credential/sample-data fallback**.
 
 A dedicated staging host, HOS-issued identity and actual bidirectional Event Mesh, Family OS authority, clinical/privacy signoffs, production backup/PITR and operations approvals are **not yet provisioned**. No production-release approval is inferred from passing CI or sample Pages. `docs/PHASE_8_1_STAGING.md` documents the exact external dependencies and operator activation steps.
+
+### Phase L1 — Full Local Activation & Testing
+A fail-closed launcher, environment doctor, and real-data workflow test suite are available. On Ubuntu with Node 22+ and Docker Compose:
+
+```bash
+npm run local:up
+```
+
+For existing Ubuntu native PostgreSQL (after configuring separate local app and migrator URLs in `server/.env`):
+
+```bash
+npm run local:up -- native
+```
+
+Generate a new one-hour development token in another terminal: `npm --prefix server run --silent dev:token`, then open `http://127.0.0.1:5173/?mode=live`. While API is running, `npm run local:doctor` verifies its database/readiness, and `npm run local:certify` runs frontend, backend/PostgreSQL and desktop/mobile Chromium tests with isolated synthetic test identities. **This cannot substitute for the user running the scripts on their own Ubuntu machine.** See `docs/PHASE_L1_LOCAL.md` for full instructions and manual acceptance. Production identity, live HOS integration and clinical safety remain pending.
