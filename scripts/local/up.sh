@@ -7,7 +7,7 @@ mode="${1:-docker}"
 if [[ "$mode" != "docker" && "$mode" != "native" ]]; then
   echo "Usage: bash scripts/local/up.sh [docker|native]" >&2; exit 2
 fi
-for bin in node npm curl; do
+for bin in node npm curl setsid; do
   command -v "$bin" >/dev/null || { echo "Install $bin before starting." >&2; exit 2; }
 done
 node -e "if(Number(process.versions.node.split('.')[0])<22)process.exit(1)" || {
@@ -32,12 +32,12 @@ npm --prefix server install --no-audit --no-fund
 npm --prefix server run db:migrate
 api_pid="" ; web_pid=""
 cleanup(){
- [[ -z "$api_pid" ]] || kill "$api_pid" 2>/dev/null || true
- [[ -z "$web_pid" ]] || kill "$web_pid" 2>/dev/null || true
+ [[ -z "$api_pid" ]] || { kill -- "-$api_pid" 2>/dev/null || true; kill "$api_pid" 2>/dev/null || true; }
+ [[ -z "$web_pid" ]] || { kill -- "-$web_pid" 2>/dev/null || true; kill "$web_pid" 2>/dev/null || true; }
  wait 2>/dev/null || true
 }
 trap cleanup EXIT INT TERM
-npm --prefix server run dev & api_pid=$!
+setsid npm --prefix server run dev & api_pid=$!
 for attempt in $(seq 1 60); do
  if curl --silent --fail --max-time 1 http://127.0.0.1:3001/health/ready >/dev/null; then break; fi
  if ! kill -0 "$api_pid" 2>/dev/null; then echo "Backend quit; inspect its startup error." >&2; exit 1; fi
@@ -46,7 +46,7 @@ done
 curl --silent --fail --max-time 3 http://127.0.0.1:3001/health/ready >/dev/null || {
  echo "API failed readiness. Check PostgreSQL / server/.env." >&2; exit 1;
 }
-npm run dev -- --host 127.0.0.1 & web_pid=$!
+setsid npm run dev -- --host 127.0.0.1 & web_pid=$!
 printf '\nNutrition OS API: http://127.0.0.1:3001/health/ready\n'
 printf 'Nutrition OS UI:  http://127.0.0.1:5173/?mode=live\n'
 printf 'For a login token, open another terminal and run:\n'
