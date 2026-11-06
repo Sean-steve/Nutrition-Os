@@ -9,7 +9,10 @@
     "preview": "vite preview --host 0.0.0.0",
     "check": "tsc --noEmit",
     "test": "vitest run",
-    "test:e2e": "playwright test"
+    "test:e2e": "playwright test",
+    "local:up": "bash scripts/local/up.sh",
+    "local:doctor": "node scripts/local/doctor.mjs --ready",
+    "local:certify": "bash scripts/local/certify.sh"
   },
   "dependencies": {
     "lucide-react": "^0.468.0",
