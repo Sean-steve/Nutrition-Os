@@ -102,15 +102,17 @@ const blankFood={name:'',servingLabel:'',energyKcal:'',proteinG:'',carbsG:'',fat
 /** Explicit private food creation at the point where an empty catalogue blocks a workflow. */
 function QuickFoodForm({p,onCreated}:{p:LiveProps;onCreated:(food:ServerFood)=>void}){
  const [form,setForm]=useState({...blankFood});
- async function submit(e:FormEvent<HTMLFormElement>){
-  e.preventDefault();
+ const valid=Boolean(form.name.trim()&&form.servingLabel.trim())&&
+  (['energyKcal','proteinG','carbsG','fatG'] as const).every(k=>form[k].trim()!==''&&Number.isFinite(Number(form[k]))&&Number(form[k])>=0);
+ async function saveFood(){
+  if(!valid)return;
   const ok=await p.perform(async()=>{
    const food=await p.client.post<ServerFood>('/foods',foodInputFrom(form));
    onCreated(food);
   },'Food saved in PostgreSQL. You can now complete this form.');
   if(ok)setForm({...blankFood});
  }
- return <form className="lv-form lv-first-food" aria-label="Create your first food" onSubmit={submit}>
+ return <div className="lv-form lv-first-food" role="group" aria-label="Create your first food">
   <div className="lv-section-label"><strong>Create your first food here</strong><span className="lv-state-chip">Private · unverified</span></div>
   <p className="lv-help">Enter the name, a serving size and your own nutrient estimates. No sample food will be imported.</p>
   <div className="lv-form-grid">
@@ -119,10 +121,10 @@ function QuickFoodForm({p,onCreated}:{p:LiveProps;onCreated:(food:ServerFood)=>v
    {([['energyKcal','Energy (kcal)'],['proteinG','Protein (g)'],['carbsG','Carbohydrate (g)'],['fatG','Fat (g)']] as const).map(([key,title])=>
     <Field title={title} key={key}><input type="number" min="0" max="100000" step="any" required placeholder="Your estimate" value={form[key]} onChange={e=>setForm(x=>({...x,[key]:e.target.value}))}/></Field>)}
   </div>
-  <div className="lv-inline"><button type="submit" className="primary-button" disabled={p.busy}>Save food and add to form <Plus size={14}/></button>
+  <div className="lv-inline"><button type="button" className="primary-button" disabled={p.busy||!valid} onClick={()=>void saveFood()}>Save food and add to form <Plus size={14}/></button>
    <button type="button" className="outlined-button" onClick={()=>p.navigate('foods')}>Open full Food Library <ArrowRight size={14}/></button></div>
   <p className="lv-help">A zero means an actual zero, not an unknown nutrient value. Use reliable references for estimates.</p>
- </form>;
+ </div>;
 }
 
 export function FoodScreen({p}:{p:LiveProps}){
