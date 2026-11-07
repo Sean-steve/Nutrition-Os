@@ -107,3 +107,5 @@ npm run local:up -- native
 ```
 
 Generate a new one-hour development token in another terminal: `npm --prefix server run --silent dev:token`, then open `http://127.0.0.1:5173/?mode=live`. While API is running, `npm run local:doctor` verifies its database/readiness, and `npm run local:certify` runs frontend, backend/PostgreSQL and desktop/mobile Chromium tests with isolated synthetic test identities. **This cannot substitute for the user running the scripts on their own Ubuntu machine.** See `docs/PHASE_L1_LOCAL.md` for full instructions and manual acceptance. Production identity, live HOS integration and clinical safety remain pending.
+
+**Local API 404 troubleshooting:** The dev frontend forwards `/api` via Vite to port 3001. If Firefox shows `Unknown API route`, use `node scripts/local/verify-api.mjs --direct` and `node scripts/local/verify-api.mjs --through-vite`. A correct unauthenticated session returns HTTP **401**. The local launcher now refuses an occupied port instead of silently reusing another application's backend. See `docs/PHASE_L1_LOCAL.md`.
