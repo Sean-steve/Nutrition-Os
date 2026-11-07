@@ -49,18 +49,22 @@ export function inspectConfig(raw){
  },issues};
 }
 export async function checkReady(fetchImpl=fetch){
- const controller=AbortSignal.timeout(4000);
+ const signal=AbortSignal.timeout(4000);
  try{
-  const [health,anonymous]=await Promise.all([
-   fetchImpl('http://127.0.0.1:3001/health/ready',{signal:controller,redirect:'error'}),
-   fetchImpl('http://127.0.0.1:3001/api/v1/nutrition/session',{signal:controller,redirect:'error'})
+  const [health,live,anonymous,proxied]=await Promise.all([
+   fetchImpl('http://127.0.0.1:3001/health/ready',{signal,redirect:'error'}),
+   fetchImpl('http://127.0.0.1:3001/health/live',{signal,redirect:'error'}),
+   fetchImpl('http://127.0.0.1:3001/api/v1/nutrition/session',{signal,redirect:'error'}),
+   fetchImpl('http://127.0.0.1:5173/api/v1/nutrition/session',{signal,redirect:'error'})
   ]);
-  if(health.status!==200||anonymous.status!==401)
-   return {ok:false,issues:['Local API not ready or unsigned session not denied.']};
-  const body=await health.json();
-  const ok=body.status==='ready'&&body.database===true&&body.migrations===true;
-  return {ok,issues:ok?[]:['Database/migration readiness is not yet confirmed.']};
- }catch{return {ok:false,issues:['Cannot reach API at 127.0.0.1:3001.']};}
+  const healthData=await health.json(),liveData=await live.json();
+  const ok=health.status===200&&healthData.status==='ready'&&healthData.database===true&&
+   healthData.migrations===true&&live.status===200&&liveData.service==='nutrition-os-api'&&
+   anonymous.status===401&&proxied.status===401;
+  return {ok,issues:ok?[]:[
+    'Nutrition OS backend identity/DB readiness or Vite /api proxy did not pass. Check 3001 and 5173; expected 401 on unauthenticated /session.'
+  ]};
+ }catch{return {ok:false,issues:['Unable to reach the Nutrition API on 3001 or its Vite proxy on 5173.']};}
 }
 async function main(){
  const path=resolve(process.cwd(),'server/.env');
