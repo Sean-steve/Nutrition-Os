@@ -21,6 +21,9 @@ if [[ ! -f server/.env ]]; then
  echo "Created server/.env with a fresh local-only JWT signing secret."
 fi
 node scripts/local/doctor.mjs --config
+# Never attach to another app's already-running 3001 / 5173 listener.
+# Vite without strictPort might silently switch ports while browser stays on the old UI.
+node scripts/local/ports.mjs 3001 5173
 if [[ "$mode" == "docker" ]]; then
  command -v docker >/dev/null || { echo "Docker not found; use native mode with your Ubuntu PostgreSQL." >&2; exit 2; }
  docker compose version >/dev/null || { echo "Docker Compose plugin not available." >&2; exit 2; }
@@ -46,7 +49,19 @@ done
 curl --silent --fail --max-time 3 http://127.0.0.1:3001/health/ready >/dev/null || {
  echo "API failed readiness. Check PostgreSQL / server/.env." >&2; exit 1;
 }
+# Refuse a wrong service that happened to return 200 on /health/ready.
+node scripts/local/verify-api.mjs --direct
 setsid npm run dev -- --host 127.0.0.1 & web_pid=$!
+for attempt in $(seq 1 30); do
+ if curl --silent --fail --max-time 1 http://127.0.0.1:5173/?mode=preview >/dev/null; then break; fi
+ if ! kill -0 "$web_pid" 2>/dev/null; then echo "Vite quit; port 5173 might be occupied." >&2; exit 1; fi
+ sleep 1
+done
+# Verify the Vite proxy reaches THIS Nutrition OS API before asking user to log in.
+node scripts/local/verify-api.mjs --through-vite || {
+ echo "Vite API proxy failed: ensure vite.config.ts forwards /api to Nutrition backend on 3001." >&2
+ exit 1
+}
 printf '\nNutrition OS API: http://127.0.0.1:3001/health/ready\n'
 printf 'Nutrition OS UI:  http://127.0.0.1:5173/?mode=live\n'
 printf 'For a login token, open another terminal and run:\n'

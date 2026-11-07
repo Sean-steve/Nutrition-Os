@@ -25,8 +25,11 @@ test('rejects duplicate env variables (no secret override)',()=>{
 });
 test('health doctor requires database readiness and unauthorized requests to be rejected',async()=>{
  const fake=async url=>{
-  const isReady=String(url).includes('ready');
-  return {status:isReady?200:401,json:async()=>({status:'ready',database:true,migrations:true})};
+  const path=String(url);
+  const isReady=path.includes('/health/ready'),isLive=path.includes('/health/live');
+  return {status:isReady||isLive?200:401,
+    json:async()=>isLive?{status:'alive',service:'nutrition-os-api'}:
+      {status:'ready',database:true,migrations:true}};
  };
  assert.equal((await checkReady(fake)).ok,true);
  const bypass=async url=>({status:200,json:async()=>({status:'ready',database:true,migrations:true})});
