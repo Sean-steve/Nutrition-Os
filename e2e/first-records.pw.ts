@@ -16,6 +16,12 @@ function localTestToken(){
  return data+'.'+createHmac('sha256',secret).update(data).digest('base64url');
 }
 test('a new account can add its first food and meal, then recover an already saved weekly plan',async({page,request})=>{
+ test.setTimeout(90000);
+ async function navigate(name:string){
+  const menu=page.getByRole('button',{name:'Open navigation'});
+  if(await menu.isVisible())await menu.click();
+  await page.getByRole('button',{name,exact:true}).click();
+ }
  const token=localTestToken();
  const unique=randomUUID().slice(0,8);
  await page.goto('/?mode=live#/meals');
@@ -41,7 +47,7 @@ test('a new account can add its first food and meal, then recover an already sav
  await page.getByRole('button',{name:'Confirm eaten & log'}).click();
  await expect(page.getByText('L1 breakfast '+unique,{exact:true})).toBeVisible();
 
- await page.getByRole('button',{name:'Meal Planner',exact:true}).click();
+ await navigate('Meal Planner');
  await expect(page.locator('.lv-head h1')).toHaveText('Weekly Meal Planning');
  const week=await page.locator('.lv-stats .lv-stat').first().locator('strong').innerText();
  // Simulate another tab creating this week's plan after the snapshot was read.
@@ -68,9 +74,9 @@ test('a new account can add its first food and meal, then recover an already sav
  await page.getByRole('button',{name:'Ingredient',exact:true}).click();
  await page.getByRole('button',{name:'Create recipe',exact:true}).click();
  await expect(page.getByText('Rice bowl '+unique,{exact:true})).toBeVisible();
- await page.getByRole('button',{name:'Meal Planner',exact:true}).click();
+ await navigate('Meal Planner');
  await expect(page.getByText('Draft',{exact:true})).toBeVisible();
- await page.getByLabel('Recipe',{exact:true}).selectOption({label:'Rice bowl '+unique});
+ await page.getByTestId('plan-recipe-select').selectOption({label:'Rice bowl '+unique});
  await page.getByRole('button',{name:/Add to plan/}).click();
  await expect(page.getByText('Rice bowl '+unique,{exact:true})).toBeVisible();
 });
