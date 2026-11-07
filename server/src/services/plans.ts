@@ -18,7 +18,16 @@ export async function listPlans(db:SqlClient,a:Actor,week:string|null){
 export async function createPlan(db:SqlClient,a:Actor,v:z.infer<typeof planInput>,corr:string){
   const row=(await db.query('INSERT INTO nutrition.meal_plan(tenant_id,user_id,week_start) VALUES($1,$2,$3) ON CONFLICT(tenant_id,user_id,week_start) DO NOTHING RETURNING *',
     [...own(a),v.weekStart])).rows[0];
-  if(!row)throw new ApiError(409,'PLAN_EXISTS','This week already has a meal plan.');
+  if(!row){
+    // Opening a saved owned week is safe and idempotent. Recover its actual
+    // PostgreSQL contents even when a client holds an old, bounded snapshot.
+    const current=(await db.query('SELECT * FROM nutrition.meal_plan WHERE tenant_id=$1 AND user_id=$2 AND week_start=$3',
+      [...own(a),v.weekStart])).rows[0];
+    if(!current)throw new ApiError(409,'PLAN_CONCURRENT_CHANGE','Weekly plan changed; refresh and retry.');
+    const entries=(await db.query('SELECT * FROM nutrition.planned_meal WHERE tenant_id=$1 AND user_id=$2 AND plan_id=$3 ORDER BY planned_on,slot',
+      [...own(a),current.id])).rows;
+    return {...current,entries,alreadyExisted:true};
+  }
   await recordChange(db,a,{type:'nutrition.plan.created',aggregate:'plan',id:row.id,action:'plan.created',correlationId:corr});
   return {...row,entries:[]};
 }
