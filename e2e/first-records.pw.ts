@@ -24,7 +24,7 @@ test('a new account can add its first food and meal, then recover an already sav
  await expect(page.locator('.lv-head h1')).toHaveText('Meal History & Corrections');
  await page.locator('.lv-head').getByRole('button',{name:'Log meal'}).click();
 
- const quick=page.getByRole('form',{name:'Create your first food'});
+ const quick=page.getByRole('group',{name:'Create your first food'});
  await expect(quick).toBeVisible();
  await expect(page.getByRole('button',{name:'Confirm eaten & log'})).toBeDisabled();
  await quick.getByLabel('Food name').fill('First rice '+unique);
