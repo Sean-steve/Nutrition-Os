@@ -54,3 +54,23 @@ The doctor never prints passwords, database URLs, secrets or JWTs. It denies rem
 
 ## Still outstanding
 AI model, verified nutrient sources, medical safety, HOS external engine installation, Family OS authoritative consent and production staging remain outside L1. A successful local test does not mean the full original vision or production deployment is complete.
+
+## Fix 404 — Unknown API route in local workspace
+This message means the request did **not** reach the expected Nutrition OS route. Seeing `http://127.0.0.1:5173/api/...` in Firefox is normal: Vite forwards `/api` to the API on port 3001.
+
+Run these read-only checks before restarting services:
+```bash
+curl -i http://127.0.0.1:3001/health/live
+curl -i http://127.0.0.1:3001/api/v1/nutrition/session
+curl -i http://127.0.0.1:5173/api/v1/nutrition/session
+sudo ss -ltnp | grep -E ':3001|:5173'
+```
+Expected: port 3001 `/health/live` returns `{"status":"alive","service":"nutrition-os-api"}`, and both unauthenticated `/session` requests return HTTP **401** with `UNAUTHENTICATED` (not 404). If the first request identifies a different server, another application is listening on 3001; inspect its PID, stop or reconfigure **only that application** after reviewing its ownership, and relaunch Nutrition OS. If 3001 responds correctly but 5173 returns 404, stop the old Vite process and restart the frontend from the Nutrition OS repo to load `vite.config.ts`.
+
+From `Nutrition-Os`:
+```bash
+node scripts/local/verify-api.mjs --direct
+node scripts/local/verify-api.mjs --through-vite
+npm run local:doctor
+```
+The L1 launcher refuses occupied frontend/backend ports instead of attaching to another project; Vite now uses `strictPort` so it cannot silently move to 5174 while Firefox still displays the old app on 5173. No automation stops other users' processes or PostgreSQL databases.
