@@ -38,7 +38,7 @@ describe('Authenticated frontend renders only verified empty API state',()=>{
    expect(html).not.toContain('m-breakfast');
  });
  it('offers an actionable inline food creation form whenever meals and recipes lack foods',()=>{
-  const meal=renderToStaticMarkup(<MealsScreen p={props('meals')}/>);
+  const meal=renderToStaticMarkup(<MealsScreen p={props('today')}/>);
   const recipes=renderToStaticMarkup(<RecipeScreen p={props('recipes')}/>);
   const dashboard=renderToStaticMarkup(<DashboardScreen p={props('dashboard')}/>);
   expect(meal).toContain('Create your first food here');
