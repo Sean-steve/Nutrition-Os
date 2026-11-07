@@ -78,5 +78,5 @@ test('a new account can add its first food and meal, then recover an already sav
  await expect(page.getByText('Draft',{exact:true})).toBeVisible();
  await page.getByTestId('plan-recipe-select').selectOption({label:'Rice bowl '+unique});
  await page.getByRole('button',{name:/Add to plan/}).click();
- await expect(page.getByText('Rice bowl '+unique,{exact:true})).toBeVisible();
+ await expect(page.locator('.lv-week-meal strong').filter({hasText:'Rice bowl '+unique})).toHaveText('Rice bowl '+unique);
 });
