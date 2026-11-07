@@ -24,6 +24,12 @@ export function DashboardScreen({p}:{p:LiveProps}){
    <Stat icon={Droplets} title="Observed water" value={p.data.water.observedL===null?'Not recorded':p.data.water.observedL+' L'} detail="Only explicitly entered hydration"/>
    <Stat icon={CalendarDays} title="Observed meals" value={String(state.observedMeals)} detail="Plan entries are not recorded intake"/>
   </div>
+  {!p.data.foods.length&&<Card title="Start here — create your first food" detail="Your database begins empty. Adding your own food unlocks meals and recipes.">
+    <div className="lv-action-list">
+     <button type="button" onClick={()=>p.navigate('foods')}><div><strong>1. Add a food to your library</strong><small>Enter a name, serving size and estimates.</small></div><ArrowRight size={16}/></button>
+     <button type="button" onClick={()=>p.navigate('meals')}><div><strong>Or start by logging a meal</strong><small>Create your first food directly in the meal form.</small></div><ArrowRight size={16}/></button>
+    </div></Card>}
+  {p.data.foods.length>0&&!p.data.recipes.length&&<Card title="Next step — create a recipe" detail="You can now build recipes from your saved food records."><Action onClick={()=>p.navigate('recipes')}>Create a recipe</Action></Card>}
   <Note><strong>Interpretation boundary:</strong> {state.disclaimer} Nutrient snapshots are calculated from user-entered foods and are not clinical measurements.</Note>
   <div className="lv-grid-two"><Card title="Daily nutrition record" detail={p.date+' · logged entries and provenance'}>
     {!today.length?<Empty title="Nothing recorded for this date" description="Your intake is unknown, not zero. Use the meal logger to record what you actually ate." action={<Action onClick={()=>p.navigate('today')}>Record a meal</Action>}/>:<div className="lv-rows">{today.map(m=><button key={m.id} type="button" className="lv-click-row" onClick={()=>p.navigate('meals')}><span className="lv-emojibox">🍽️</span><span><strong>{m.name}</strong><small>{m.slot} · {asNumber(m.energy_kcal)} kcal · {asNumber(m.protein_g)}g protein</small></span><ArrowRight size={16}/></button>)}</div>}
@@ -92,6 +98,35 @@ function foodInputFrom(form:{name:string;servingLabel:string;energyKcal:string;p
   proteinG:Number(form.proteinG),carbsG:Number(form.carbsG),fatG:Number(form.fatG)};
 }
 const blankFood={name:'',servingLabel:'',energyKcal:'',proteinG:'',carbsG:'',fatG:''};
+
+/** Explicit private food creation at the point where an empty catalogue blocks a workflow. */
+function QuickFoodForm({p,onCreated}:{p:LiveProps;onCreated:(food:ServerFood)=>void}){
+ const [form,setForm]=useState({...blankFood});
+ const valid=Boolean(form.name.trim()&&form.servingLabel.trim())&&
+  (['energyKcal','proteinG','carbsG','fatG'] as const).every(k=>form[k].trim()!==''&&Number.isFinite(Number(form[k]))&&Number(form[k])>=0);
+ async function saveFood(){
+  if(!valid)return;
+  const ok=await p.perform(async()=>{
+   const food=await p.client.post<ServerFood>('/foods',foodInputFrom(form));
+   onCreated(food);
+  },'Food saved in PostgreSQL. You can now complete this form.');
+  if(ok)setForm({...blankFood});
+ }
+ return <div className="lv-form lv-first-food" role="group" aria-label="Create your first food">
+  <div className="lv-section-label"><strong>Create your first food here</strong><span className="lv-state-chip">Private · unverified</span></div>
+  <p className="lv-help">Enter the name, a serving size and your own nutrient estimates. No sample food will be imported.</p>
+  <div className="lv-form-grid">
+   <Field title="Food name"><input placeholder="e.g., Cooked rice" maxLength={140} required value={form.name} onChange={e=>setForm(x=>({...x,name:e.target.value}))}/></Field>
+   <Field title="One serving"><input placeholder="e.g., 1 cup" required value={form.servingLabel} onChange={e=>setForm(x=>({...x,servingLabel:e.target.value}))}/></Field>
+   {([['energyKcal','Energy (kcal)'],['proteinG','Protein (g)'],['carbsG','Carbohydrate (g)'],['fatG','Fat (g)']] as const).map(([key,title])=>
+    <Field title={title} key={key}><input type="number" min="0" max="100000" step="any" required placeholder="Your estimate" value={form[key]} onChange={e=>setForm(x=>({...x,[key]:e.target.value}))}/></Field>)}
+  </div>
+  <div className="lv-inline"><button type="button" className="primary-button" disabled={p.busy||!valid} onClick={()=>void saveFood()}>Save food and add to form <Plus size={14}/></button>
+   <button type="button" className="outlined-button" onClick={()=>p.navigate('foods')}>Open full Food Library <ArrowRight size={14}/></button></div>
+  <p className="lv-help">A zero means an actual zero, not an unknown nutrient value. Use reliable references for estimates.</p>
+ </div>;
+}
+
 export function FoodScreen({p}:{p:LiveProps}){
  const [form,setForm]=useState({...blankFood}),[editing,setEditing]=useState<FoodEdit>(null),[filter,setFilter]=useState('');
  const foods=p.data.foods.filter(f=>f.name.toLowerCase().includes(filter.toLowerCase()));
@@ -108,7 +143,7 @@ export function FoodScreen({p}:{p:LiveProps}){
   if(!window.confirm('Retire this food from future selection? Historical meals and recipe references will remain.'))return;
   await p.perform(()=>p.client.delete('/foods/'+id),'Food retired. Historical nutrition snapshots remain unchanged.');
  }
- return <div className="lv-page"><Head icon={Apple} tag="FOOD KNOWLEDGE" title="Your Food Library" description="Create and maintain user-entered food portions and nutrient estimates. Entries remain unverified until a provenance workflow is certified."/>
+ return <div className="lv-page"><Head icon={Apple} tag="FOOD KNOWLEDGE" title="Your Food Library" description="Start here: add your first food to unlock meal logging and recipes. No sample foods are imported; values are your own estimates."/>
   <div className="lv-grid-two"><Card title={editing?'Update food details':'Add a food record'} detail="Values are per one named serving. No fake catalogue data is imported.">
    <form className="lv-form" onSubmit={submit}>
     <div className="lv-form-grid"><Field title="Food name"><input value={form.name} onChange={e=>setForm(v=>({...v,name:e.target.value}))} maxLength={140} required/></Field>
@@ -150,7 +185,7 @@ export function RecipeScreen({p}:{p:LiveProps}){
    {ingredients.map((i,index)=><div className="lv-ingredient" key={index}><label className="sr-only" htmlFor={'recipe-food-'+index}>Ingredient food</label><select id={'recipe-food-'+index} value={i.foodId} onChange={e=>setIngredients(rows=>rows.map((r,n)=>n===index?{...r,foodId:e.target.value}:r))}>{p.data.foods.map(f=><option key={f.id} value={f.id}>{f.name}</option>)}</select>
     <label className="sr-only" htmlFor={'recipe-qty-'+index}>Ingredient servings</label><input id={'recipe-qty-'+index} type="number" min=".25" max="1000" step=".25" required value={i.servings} onChange={e=>setIngredients(rows=>rows.map((r,n)=>n===index?{...r,servings:e.target.value}:r))}/>
     <button type="button" className="lv-icon" aria-label="Remove ingredient" onClick={()=>setIngredients(rows=>rows.filter((_,n)=>n!==index))}><Trash2 size={16}/></button></div>)}
-   {!p.data.foods.length&&<p className="lv-help">Add foods first. Recipes cannot refer to imaginary ingredients.</p>}
+   {!p.data.foods.length&&<div className="lv-setup-callout"><QuickFoodForm p={p} onCreated={food=>setIngredients(rows=>[...rows,{foodId:food.id,servings:'1'}])}/></div>}
    <Note warn>Recipe nutrition is derived from user-entered foods. Review ingredient exclusions, allergens and food safety independently.</Note>
    <div className="lv-inline"><button className="primary-button" type="submit" disabled={p.busy||!p.data.foods.length||!ingredients.length}>{editing?'Save recipe version':'Create recipe'}</button>{editing&&<button className="outlined-button" type="button" onClick={reset}>Cancel</button>}</div>
   </form>
@@ -205,10 +240,10 @@ export function MealsScreen({p}:{p:LiveProps}){
    {!showForm?<Empty title="Ready to log?" description="Open the meal logger when you have an actual observation." action={<Action onClick={()=>setShowForm(true)}>Log a meal</Action>}/>:<form className="lv-form" onSubmit={submit}>
     <div className="lv-form-grid"><Field title="What did you eat?"><input required value={name} onChange={e=>setName(e.target.value)} maxLength={180}/></Field>
     <Field title="Meal slot"><select value={slot} onChange={e=>setSlot(e.target.value as ServerMeal['slot'])}>{slots.map(x=><option value={x} key={x}>{x}</option>)}</select></Field></div>
-    <Field title="Optional note"><textarea maxLength={1000} rows={2} value={note} onChange={e=>setNote(e.target.value)}/></Field>
+    <Field title="Optional note"><textarea autoComplete="off" maxLength={1000} rows={2} value={note} onChange={e=>setNote(e.target.value)} placeholder="Only notes you deliberately enter are saved"/></Field>
     <div className="lv-section-label"><strong>Observed ingredients</strong><button className="outlined-button" type="button" disabled={!p.data.foods.length||items.length>=40} onClick={()=>setItems(r=>[...r,{foodId:p.data.foods[0].id,servings:'1'}])}><Plus size={14}/> Add food</button></div>
     {items.map((item,i)=><div className="lv-ingredient" key={i}><label className="sr-only" htmlFor={'meal-food-'+i}>Food</label><select id={'meal-food-'+i} value={item.foodId} onChange={e=>setItems(rows=>rows.map((r,n)=>n===i?{...r,foodId:e.target.value}:r))}>{p.data.foods.map(f=><option value={f.id} key={f.id}>{f.name} · {f.serving_label}</option>)}</select><label className="sr-only" htmlFor={'meal-qty-'+i}>Quantity in servings</label><input id={'meal-qty-'+i} type="number" min=".001" max="1000" step="any" required value={item.servings} onChange={e=>setItems(rows=>rows.map((r,n)=>n===i?{...r,servings:e.target.value}:r))}/><button type="button" className="lv-icon" aria-label="Remove ingredient" onClick={()=>setItems(rows=>rows.filter((_,n)=>n!==i))}><Trash2 size={16}/></button></div>)}
-    {!p.data.foods.length&&<p className="lv-help">Create actual foods in Food Library first. No sample foods are imported into your authenticated account.</p>}
+    {!p.data.foods.length&&<div className="lv-setup-callout"><QuickFoodForm p={p} onCreated={food=>setItems(rows=>[...rows,{foodId:food.id,servings:'1'}])}/></div>}
     {opened&&<div className="lv-reading"><span>Current revision</span><strong>{opened.revision}</strong></div>}
     <Note warn>Submitting confirms actual intake, not planned consumption. Quantities and food composition may be approximate. The server records a nutrient snapshot.</Note>
     <div className="lv-inline"><button className="primary-button" type="submit" disabled={p.busy||!items.length}>{editing?'Save correction':'Confirm eaten & log'}</button><button className="outlined-button" type="button" onClick={reset}>Cancel</button></div>

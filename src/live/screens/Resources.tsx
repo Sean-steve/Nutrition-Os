@@ -1,7 +1,7 @@
-import {useState,type FormEvent} from 'react';
+import {useEffect,useState,type FormEvent} from 'react';
 import {AlertTriangle,ArrowRight,CalendarDays,Check,CheckCircle2,ChevronLeft,ChevronRight,Clock,Package,Plus,ShoppingBasket,Trash2,Wallet,Warehouse} from 'lucide-react';
 import type {LiveProps} from '../types';
-import type {ServerGroceryLine,ServerLot} from '../client';
+import type {ServerGroceryLine,ServerLot,ServerPlan} from '../client';
 import {asNumber,money,dateOnly} from '../client';
 import {Head,Card,Stat,Empty,Note,Action,Field,slots,locations,monday,shiftDay} from '../components';
 const upper=(str:string)=>str.charAt(0).toUpperCase()+str.slice(1);
@@ -14,28 +14,55 @@ export function PlanScreen({p}:{p:LiveProps}){
  const [week,setWeek]=useState(monday(p.date));
  const [day,setDay]=useState(p.date),[slot,setSlot]=useState<'Breakfast'|'Lunch'|'Snack'|'Dinner'>('Dinner');
  const [recipeId,setRecipeId]=useState(''),[portions,setPortions]=useState('1'),[locked,setLocked]=useState(false);
- const plan=bestPlan(p,week),entries=plan?.entries??[];
+ const [weekLookup,setWeekLookup]=useState<{week:string;plan:ServerPlan|null;error:string}|null>(null);
+ const listed=bestPlan(p,week);
+ const plan=listed??(weekLookup?.week===week?weekLookup.plan:null);
+ const checking=!listed&&weekLookup?.week!==week;
+ const weekError=!listed&&weekLookup?.week===week?weekLookup.error:'';
+ const entries=plan?.entries??[];
  const days=Array.from({length:7},(_,i)=>shiftDay(week,i));
+ // The initial snapshot is intentionally bounded. Always query the selected week:
+ // a saved week must never appear as "Not created" just because it was omitted.
+ async function refreshWeek(){
+  try{
+   const rows=await p.client.get<ServerPlan[]>('/plans?weekStart='+encodeURIComponent(week));
+   setWeekLookup({week,plan:rows[0]??null,error:''});
+  }catch(e){setWeekLookup({week,plan:null,error:e instanceof Error?e.message:'Unable to load saved plan.'});}
+ }
+ useEffect(()=>{
+  let alive=true;setWeekLookup(null);
+  p.client.get<ServerPlan[]>('/plans?weekStart='+encodeURIComponent(week))
+   .then(rows=>{if(alive)setWeekLookup({week,plan:rows[0]??null,error:''});})
+   .catch(e=>{if(alive)setWeekLookup({week,plan:null,error:e instanceof Error?e.message:'Unable to load saved plan.'});});
+  return ()=>{alive=false;};
+ },[p.client,week]);
  async function createPlan(){
-  await p.perform(()=>p.client.post('/plans',{weekStart:week}),'Weekly plan created in PostgreSQL.');
+  const ok=await p.perform(()=>p.client.post('/plans',{weekStart:week}),
+    'Weekly plan ready. Existing weeks are reused rather than duplicated.');
+  if(ok)await refreshWeek();
  }
  async function add(e:FormEvent<HTMLFormElement>){e.preventDefault();
   if(!plan)return;await p.perform(()=>p.client.post('/plans/'+plan.id+'/entries',{plannedOn:day,slot,recipeId,portions:Number(portions),locked}),
    'Meal added to the draft plan. It is not a consumed meal.');
+  await refreshWeek();
  }
  async function setStatus(status:'approved'|'reopen'){if(!plan)return;
   await p.perform(()=>p.client.post('/plans/'+plan.id+'/'+(status==='approved'?'approve':'reopen'),{}),
    status==='approved'?'Plan approved; no intake was logged.':'Plan reopened for editing.');
+  await refreshWeek();
  }
  async function remove(entryId:string){if(!plan)return;
   if(!window.confirm('Remove this draft meal from the plan?'))return;
   await p.perform(()=>p.client.delete('/plans/'+plan.id+'/entries/'+entryId),'Draft plan entry removed.');
+  await refreshWeek();
  }
  async function toggleLock(entryId:string,isLocked:boolean){if(!plan)return;
   await p.perform(()=>p.client.patch('/plans/'+plan.id+'/entries/'+entryId+'/lock',{locked:!isLocked}),'Plan entry lock updated.');
+  await refreshWeek();
  }
- return <div className="lv-page"><Head icon={CalendarDays} tag="PLAN AUTHORITY" title="Weekly Meal Planning" description="Approved plans can generate shopping requirements or be explicitly shared with a household. Plans never create consumption records." action={<Action outline onClick={()=>p.navigate('groceries')}>Open grocery workflow</Action>}/>
-  <div className="lv-stats"><Stat icon={CalendarDays} title="Selected week" value={week} detail="Weeks begin Monday"/><Stat icon={CheckCircle2} title="Plan status" value={plan?upper(plan.status):'Not created'} detail={plan?'Revision '+plan.revision:'No synthetic plan created'}/><Stat icon={Clock} title="Plan entries" value={String(entries.length)} detail="Intent only, not consumption"/><Stat icon={ShoppingBasket} title="Shopping bridge" value={plan?.status==='approved'?'Ready':'Await approval'} detail="Requires your explicit action"/></div>
+ return <div className="lv-page"><Head icon={CalendarDays} tag="PLAN AUTHORITY" title="Weekly Meal Planning" description="Create or reopen a weekly plan, then schedule meals from saved recipes. Plans never create consumption records." action={!plan&&!checking&&!weekError?<Action disabled={p.busy} onClick={()=>void createPlan()}>Create or open this week</Action>:<Action outline onClick={()=>p.navigate('groceries')}>Open grocery workflow</Action>}/>
+  {weekError&&<div className="lv-error" role="alert">Could not check this week's saved plan: {weekError} <button type="button" onClick={()=>{setWeekLookup(null);void refreshWeek();}}>Retry</button></div>}
+  <div className="lv-stats"><Stat icon={CalendarDays} title="Selected week" value={week} detail="Weeks begin Monday"/><Stat icon={CheckCircle2} title="Plan status" value={plan?upper(plan.status):checking?'Checking…':weekError?'Unavailable':'Not created'} detail={plan?'Revision '+plan.revision:'No synthetic plan created'}/><Stat icon={Clock} title="Plan entries" value={String(entries.length)} detail="Intent only, not consumption"/><Stat icon={ShoppingBasket} title="Shopping bridge" value={plan?.status==='approved'?'Ready':'Await approval'} detail="Requires your explicit action"/></div>
   <div className="lv-grid-two"><Card title="Seven-day meal schedule" detail="Choose a week and review its actual plan entries." action={<div className="lv-inline"><button className="lv-icon" type="button" aria-label="Previous week" onClick={()=>{const d=shiftDay(week,-7);setWeek(d);setDay(d);}}><ChevronLeft size={16}/></button><strong>{week}</strong><button className="lv-icon" type="button" aria-label="Next week" onClick={()=>{const d=shiftDay(week,7);setWeek(d);setDay(d);}}><ChevronRight size={16}/></button></div>}>
    <div className="lv-week-grid">{days.map(date=><article className={'lv-week-day '+(day===date?'selected':'')} key={date}>
     <button type="button" className="lv-week-heading" onClick={()=>setDay(date)}><small>{new Date(date+'T12:00:00Z').toLocaleDateString('en-KE',{weekday:'short',timeZone:'UTC'})}</small><strong>{date.slice(8)}</strong></button>
@@ -46,11 +73,11 @@ export function PlanScreen({p}:{p:LiveProps}){
       </div>}
     </div>)}{!entries.some(e=>dateOnly(e.planned_on)===date)&&<span className="lv-week-blank">No planned meals</span>}</div>
    </article>)}</div>
-   <div className="lv-inline lv-bottom-actions">{!plan?<button className="primary-button" type="button" disabled={p.busy} onClick={()=>void createPlan()}>Create weekly plan</button>:<><button className={plan.status==='draft'?'primary-button':'outlined-button'} type="button" disabled={p.busy} onClick={()=>void setStatus(plan.status==='draft'?'approved':'reopen')}>{plan.status==='draft'?'Approve plan':'Reopen plan'}</button><button className="outlined-button" type="button" onClick={()=>p.navigate('groceries')}>Generate groceries <ArrowRight size={14}/></button></>}</div>
+   <div className="lv-inline lv-bottom-actions">{!plan?<button className="primary-button" type="button" disabled={p.busy||checking||Boolean(weekError)} onClick={()=>void createPlan()}>Create or open weekly plan</button>:<><button className={plan.status==='draft'?'primary-button':'outlined-button'} type="button" disabled={p.busy} onClick={()=>void setStatus(plan.status==='draft'?'approved':'reopen')}>{plan.status==='draft'?'Approve plan':'Reopen plan'}</button><button className="outlined-button" type="button" onClick={()=>p.navigate('groceries')}>Generate groceries <ArrowRight size={14}/></button></>}</div>
   </Card><div className="lv-stack"><Card title="Add a planned meal" detail="Editable only while the weekly plan is a draft.">
-    {!plan?<Empty title="Create a week first" description="No plan is inferred or imported for this signed-in account."/>:plan.status==='approved'?<Empty title="Approved plan is locked for edits" description="Reopen the plan to make changes; associated grocery lists may become stale."/>:
-    <form className="lv-form" onSubmit={add}><div className="lv-form-grid"><Field title="Plan date"><select value={day} onChange={e=>setDay(e.target.value)}>{days.map(d=><option value={d} key={d}>{d}</option>)}</select></Field><Field title="Meal slot"><select value={slot} onChange={e=>setSlot(e.target.value as typeof slot)}>{slots.map(s=><option key={s} value={s}>{s}</option>)}</select></Field></div>
-     <Field title="Recipe"><select value={recipeId} onChange={e=>setRecipeId(e.target.value)} required><option value="">Select a saved recipe</option>{p.data.recipes.map(r=><option key={r.id} value={r.id}>{r.name}</option>)}</select></Field>
+    {!plan?<Empty title={checking?'Checking existing weekly plans':'Create or open a week first'} description={checking?'Looking up the selected week in PostgreSQL.':'Only one plan is allowed per week; opening a saved plan does not create a duplicate.'} action={!checking&&!weekError?<Action onClick={()=>void createPlan()}>Create or open this week</Action>:undefined}/>:plan.status==='approved'?<Empty title="Approved plan is locked for edits" description="Reopen the plan to make changes; associated grocery lists may become stale."/>:
+    !p.data.recipes.length?<Empty title="Create a recipe to plan a meal" description="A weekly plan uses saved recipes. Start with a food if your library is still empty." action={<Action onClick={()=>p.navigate(p.data.foods.length?'recipes':'foods')}>{p.data.foods.length?'Create recipe':'Add first food'}</Action>}/>:<form className="lv-form" onSubmit={add}><div className="lv-form-grid"><Field title="Plan date"><select value={day} onChange={e=>setDay(e.target.value)}>{days.map(d=><option value={d} key={d}>{d}</option>)}</select></Field><Field title="Meal slot"><select value={slot} onChange={e=>setSlot(e.target.value as typeof slot)}>{slots.map(s=><option key={s} value={s}>{s}</option>)}</select></Field></div>
+     <Field title="Recipe"><select aria-label="Select a saved recipe for this plan" data-testid="plan-recipe-select" value={recipeId} onChange={e=>setRecipeId(e.target.value)} required><option value="">Select a saved recipe</option>{p.data.recipes.map(r=><option key={r.id} value={r.id}>{r.name}</option>)}</select></Field>
      <div className="lv-form-grid"><Field title="Portions"><input type="number" step=".25" min=".25" max="1000" required value={portions} onChange={e=>setPortions(e.target.value)}/></Field><label className="lv-check"><input type="checkbox" checked={locked} onChange={e=>setLocked(e.target.checked)}/> Lock this entry</label></div>
      <button className="primary-button" type="submit" disabled={p.busy||!recipeId}><Plus size={14}/> Add to plan</button>
     </form>}

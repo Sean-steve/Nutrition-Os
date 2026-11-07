@@ -180,3 +180,11 @@
 /* Phase 8: stronger specificity than the asynchronously loaded live.css base;
    12px text must meet >= 4.5:1 contrast even when chunk CSS order changes. */
 html body .lv-login-outer .lv-login-card > p { color:#345b47; }
+
+/* First-run forms appear inline where missing prerequisites previously disabled actions. */
+.lv-setup-callout{border:1px solid #cbe5d3;background:#f3fbf5;border-radius:12px;padding:15px;margin:12px 0}
+.lv-first-food{gap:12px}
+.lv-first-food .lv-section-label{flex-wrap:wrap}
+.lv-first-food .lv-form-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+.lv-first-food .lv-inline{align-items:stretch}
+@media(max-width:650px){.lv-first-food .lv-form-grid{grid-template-columns:1fr}}

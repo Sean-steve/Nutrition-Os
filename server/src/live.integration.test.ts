@@ -56,6 +56,27 @@ describe('Phase 6 authenticated personal and shared integration',()=>{
    expect((await req(owner,'GET','/progress?from=2026-10-01&to=2026-10-31')).json.data.hydration).toHaveLength(1);
    expect((await req(owner,'GET','/progress?from=2025-01-01&to=2026-10-31')).status).toBe(422);
  });
+ it('reopening an already saved week returns the owned plan rather than a blocking conflict',async()=>{
+  const weekStart='2026-11-02';
+  const initial=await req(owner,'POST','/plans',{weekStart});
+  expect(initial.status).toBe(201);
+  const saved=await req(owner,'POST','/plans/'+initial.json.data.id+'/entries',{
+   plannedOn:'2026-11-07',slot:'Breakfast',recipeId,portions:1
+  });
+  expect(saved.status).toBe(201);
+  const reopened=await req(owner,'POST','/plans',{weekStart});
+  expect(reopened.status).toBe(201);
+  expect(reopened.json.data.id).toBe(initial.json.data.id);
+  expect(reopened.json.data.alreadyExisted).toBe(true);
+  expect(reopened.json.data.entries).toHaveLength(1);
+  expect(reopened.json.data.entries[0].id).toBe(saved.json.data.id);
+  const selected=await req(owner,'GET','/plans?weekStart='+weekStart);
+  expect(selected.status).toBe(200);
+  expect(selected.json.data).toHaveLength(1);
+  expect(selected.json.data[0].id).toBe(initial.json.data.id);
+  const otherUser=await req(member,'GET','/plans?weekStart='+weekStart);
+  expect(otherUser.json.data).toHaveLength(0);
+ });
  it('owner creates approved plan, with explicit private-to-shared publishing only',async()=>{
   const plan=await req(owner,'POST','/plans',{weekStart:'2026-10-26'});expect(plan.status).toBe(201);planId=plan.json.data.id;
   const entry=await req(owner,'POST','/plans/'+planId+'/entries',{plannedOn:'2026-10-31',slot:'Dinner',recipeId,portions:2});
