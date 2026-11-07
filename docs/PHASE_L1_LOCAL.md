@@ -74,3 +74,11 @@ node scripts/local/verify-api.mjs --through-vite
 npm run local:doctor
 ```
 The L1 launcher refuses occupied frontend/backend ports instead of attaching to another project; Vite now uses `strictPort` so it cannot silently move to 5174 while Firefox still displays the old app on 5173. No automation stops other users' processes or PostgreSQL databases.
+
+
+## First-run forms and weekly plan recovery
+If your account has no foods, choose **Meals → Log meal** and use the new **Create your first food here** form (or visit Food Library). Supply your own serving size and nutrient estimates; no sample food is injected. Once saved, the food becomes an ingredient in the meal form. The same shortcut is available when the recipe editor has no foods.
+
+A plan is unique per user and Monday-starting week. Meal Planner queries the selected week directly, even if it is outside the main snapshot. **Create or open weekly plan** reuses an existing plan rather than failing with PLAN_EXISTS; saved entries and approval state are preserved. Scheduling requires a saved recipe, and the planner now offers a direct Create recipe action when needed.
+
+If saving still fails, copy the red error correlation reference (not your JWT), module and selected date. Run `npm run local:doctor` to confirm the actual API. Review optional meal notes before submitting, as browsers can autofill form fields.
