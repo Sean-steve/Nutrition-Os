@@ -37,6 +37,16 @@ describe('Authenticated frontend renders only verified empty API state',()=>{
    expect(html).not.toContain('Member A');
    expect(html).not.toContain('m-breakfast');
  });
+ it('offers an actionable inline food creation form whenever meals and recipes lack foods',()=>{
+  const meal=renderToStaticMarkup(<MealsScreen p={props('meals')}/>);
+  const recipes=renderToStaticMarkup(<RecipeScreen p={props('recipes')}/>);
+  const dashboard=renderToStaticMarkup(<DashboardScreen p={props('dashboard')}/>);
+  expect(meal).toContain('Create your first food here');
+  expect(meal).toContain('Save food and add to form');
+  expect(recipes).toContain('Create your first food here');
+  expect(dashboard).toContain('Start here');
+  expect(meal).not.toContain('Eggs &amp; avocado toast');
+ });
  it('does not turn missing meal or hydration observations into zero or a target failure',()=>{
    const html=renderToStaticMarkup(<DashboardScreen p={props('dashboard')}/>);
    expect(html).toContain('Not recorded');
